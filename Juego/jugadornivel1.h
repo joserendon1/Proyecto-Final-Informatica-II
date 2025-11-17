@@ -1,69 +1,50 @@
 #ifndef JUGADORNIVEL1_H
 #define JUGADORNIVEL1_H
 
-#include "personaje.h"
+#include "entidad.h"
 #include "arma.h"
 #include <QPointF>
 #include <QList>
-#include <Qdebug>
 
-class JugadorNivel1 : public Personaje
+class JugadorNivel1 : public Entidad
 {
 public:
     JugadorNivel1();
     ~JugadorNivel1();
 
-    void mover(const QPointF& direccion) override;
-    void actualizar() override;
+    void actualizar(float deltaTime) override;
+    QRectF getAreaColision() const override;
 
     void procesarInput(bool teclas[]);
-    void recibirDanio(float cantidad);
+    void activarArmas();
 
-    // Sistema de experiencia y nivel
+    // Sistema de experiencia
     void ganarExperiencia(int exp);
     void subirNivel();
-
-    // Sistema de armas
-    void activarArmas();
-    QList<Arma*> getArmas() const { return armas; }
-
-    // Sistema de mejoras
     bool tieneMejoraPendiente() const { return mejoraPendiente; }
     void setMejoraPendiente(bool pendiente) { mejoraPendiente = pendiente; }
 
-    // Métodos simples para aplicar mejoras
-    void aplicarMejoraVida(float extra) {
-        vida += extra;
-    }
-
-    void aplicarMejoraDanio(float extra) {
-        danioExtra += extra;
-        // Aplicar el daño extra a todas las armas
-        for(Arma* arma : armas) {
-            arma->setDanio(arma->getTipo() == Arma::ESPADA ? 25.0f + danioExtra : 15.0f + danioExtra);
-        }
-    }
-
-    void aplicarMejoraVelocidad(float extra) {
-        velocidadExtra += extra;
-    }
+    // Métodos para aplicar mejoras
+    void aplicarMejoraVida(float extra);
+    void aplicarMejoraDanio(float extra);
+    void aplicarMejoraVelocidad(float extra);
+    void anadirArmaNueva(Arma::Tipo tipoArma); // NUEVO método
 
     // Getters
     int getNivel() const { return nivel; }
     int getExperiencia() const { return experiencia; }
-    int getExperienciaParaSiguienteNivel() const { return nivel * 100; }
-
+    int getExperienciaParaSiguienteNivel() const;
     float getDanioExtra() const { return danioExtra; }
     float getVelocidadExtra() const { return velocidadExtra; }
+    QList<Arma*> getArmas() const { return armas; }
+    bool tieneArma(Arma::Tipo tipo) const; // NUEVO método
 
 private:
     bool teclasPresionadas[4]; // WASD
-    int nivel;
-    int experiencia;
     QPointF velocidadMovimiento;
     QList<Arma*> armas;
-
-    // Sistema de mejoras
+    int nivel;
+    int experiencia;
     bool mejoraPendiente;
     float danioExtra;
     float velocidadExtra;

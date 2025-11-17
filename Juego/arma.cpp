@@ -1,101 +1,120 @@
 #include "arma.h"
-#include <QTimer>
 #include <QtMath>
 #include <QRandomGenerator>
 
-Arma::Arma(Tipo tipoArma)
-    : tipo(tipoArma), listaParaAtacar(true)
+Arma::Arma(Tipo tipoArma) : tipo(tipoArma), tiempoCooldownRestante(0)
 {
-    timerCooldown = new QTimer();
-    timerCooldown->setSingleShot(true);
-    connect(timerCooldown, &QTimer::timeout, this, &Arma::resetCooldown);
-
-    // Configurar según el tipo de arma
     switch(tipo) {
     case ESPADA:
         danio = 25.0f;
-        cooldown = 800; // 0.8 segundos
+        cooldown = 1000;  // AUMENTADO de 800 a 1000 ms (más lento)
         break;
     case BALLESTA:
         danio = 15.0f;
-        cooldown = 1200; // 1.2 segundos
+        cooldown = 1500;  // AUMENTADO de 1200 a 1500 ms
         break;
     case ACEITE:
         danio = 35.0f;
-        cooldown = 2000; // 2 segundos
+        cooldown = 2500;  // AUMENTADO de 2000 a 2500 ms
+        break;
+    case ARCO:
+        danio = 20.0f;
+        cooldown = 1200;  // AUMENTADO de 1000 a 1200 ms
+        break;
+    case LANZA:
+        danio = 30.0f;
+        cooldown = 1800;  // AUMENTADO de 1500 a 1800 ms
+        break;
+    case ESCUDO:
+        danio = 10.0f;
+        cooldown = 800;   // AUMENTADO de 500 a 800 ms
         break;
     }
 }
 
-Arma::~Arma() {
-    if(timerCooldown) {
-        timerCooldown->stop();
-        delete timerCooldown;
-    }
+Arma::~Arma()
+{
 }
 
-void Arma::activar(const QPointF& posicionJugador)
+void Arma::activar(const QPointF& posicion, const QPointF& direccion)
 {
-    if(!listaParaAtacar) return;
+    if(!puedeAtacar()) return;
 
-    areasAtaque.clear();
-    proyectiles.clear();
-    direccionesProyectiles.clear();
+    limpiarAtaques();
 
     switch(tipo) {
     case ESPADA:
-        crearAtaqueEspada(posicionJugador);
+        crearAtaqueEspada(posicion);
         break;
     case BALLESTA:
-        crearAtaqueBallesta(posicionJugador);
+        crearAtaqueBallesta(posicion, direccion);
         break;
     case ACEITE:
-        // Para futura implementación
+        areasAtaque.append(QRectF(posicion.x() - 50, posicion.y() - 50, 100, 100));
+        break;
+    case ARCO:
+        crearAtaqueBallesta(posicion, QPointF(0, -1));
+        crearAtaqueBallesta(posicion, QPointF(1, 0));
+        crearAtaqueBallesta(posicion, QPointF(0, 1));
+        crearAtaqueBallesta(posicion, QPointF(-1, 0));
+        break;
+    case LANZA:
+        areasAtaque.append(QRectF(posicion.x() - 5, posicion.y() - 5, 100, 10));
+        break;
+    case ESCUDO:
+        areasAtaque.append(QRectF(posicion.x() - 30, posicion.y() - 30, 60, 60));
         break;
     }
 
-    listaParaAtacar = false;
-    timerCooldown->start(cooldown);
+    tiempoCooldownRestante = cooldown;
 }
 
-void Arma::actualizar()
+void Arma::actualizar(float deltaTime)
 {
-    if(tipo == BALLESTA) {
-        actualizarProyectiles();
+    if(tiempoCooldownRestante > 0) {
+        tiempoCooldownRestante -= deltaTime;
+        if(tiempoCooldownRestante < 0) tiempoCooldownRestante = 0;
+    }
+
+    if(tipo == BALLESTA || tipo == ARCO) {
+        actualizarProyectiles(deltaTime);
+    }
+
+    if(tipo == ESPADA || tipo == ACEITE || tipo == LANZA || tipo == ESCUDO) {
+        if(tiempoCooldownRestante < cooldown * 0.3f) {
+            limpiarAtaques();
+        }
     }
 }
 
 void Arma::crearAtaqueEspada(const QPointF& posicion)
 {
-    // Ataque en 4 direcciones alrededor del jugador
-    areasAtaque.append(QRectF(posicion.x() - 40, posicion.y() - 60, 80, 40)); // Arriba
-    areasAtaque.append(QRectF(posicion.x() + 20, posicion.y() - 40, 40, 80)); // Derecha
-    areasAtaque.append(QRectF(posicion.x() - 40, posicion.y() + 20, 80, 40)); // Abajo
-    areasAtaque.append(QRectF(posicion.x() - 60, posicion.y() - 40, 40, 80)); // Izquierda
+    areasAtaque.append(QRectF(posicion.x() - 40, posicion.y() - 60, 80, 40));
+    areasAtaque.append(QRectF(posicion.x() + 20, posicion.y() - 40, 40, 80));
+    areasAtaque.append(QRectF(posicion.x() - 40, posicion.y() + 20, 80, 40));
+    areasAtaque.append(QRectF(posicion.x() - 60, posicion.y() - 40, 40, 80));
 }
 
-void Arma::crearAtaqueBallesta(const QPointF& posicion)
+void Arma::crearAtaqueBallesta(const QPointF& posicion, const QPointF& direccion)
 {
-    // Crear proyectil hacia arriba
     proyectiles.append(posicion);
-    direccionesProyectiles.append(QPointF(0, -1));
+    direccionesProyectiles.append(direccion);
+    tiemposVidaProyectiles.append(2000.0f);
 }
 
-void Arma::actualizarProyectiles()
+void Arma::actualizarProyectiles(float deltaTime)
 {
-    // Mover proyectiles existentes
     for(int i = 0; i < proyectiles.size(); i++) {
-        proyectiles[i] += direccionesProyectiles[i] * 8.0f; // Velocidad del proyectil
+        // REDUCIDO de 0.3f a 0.15f (más lento)
+        proyectiles[i] += direccionesProyectiles[i] * 0.15f * deltaTime;
+        tiemposVidaProyectiles[i] -= deltaTime;
     }
 
-    // Eliminar proyectiles que salgan de pantalla
     for(int i = proyectiles.size() - 1; i >= 0; i--) {
-        if(proyectiles[i].y() < -50 ||
-            proyectiles[i].x() < -50 ||
-            proyectiles[i].x() > 850 ||
-            proyectiles[i].y() > 650) {
+        if(tiemposVidaProyectiles[i] <= 0) {
             proyectiles.removeAt(i);
             direccionesProyectiles.removeAt(i);
+            tiemposVidaProyectiles.removeAt(i);
         }
     }
 }
@@ -104,8 +123,7 @@ QList<QRectF> Arma::getAreasAtaque() const
 {
     QList<QRectF> todasLasAreas = areasAtaque;
 
-    // Agregar áreas de proyectiles para ballesta
-    if(tipo == BALLESTA) {
+    if(tipo == BALLESTA || tipo == ARCO) {
         for(const QPointF& proyectil : proyectiles) {
             todasLasAreas.append(QRectF(proyectil.x() - 5, proyectil.y() - 5, 10, 10));
         }
@@ -114,11 +132,7 @@ QList<QRectF> Arma::getAreasAtaque() const
     return todasLasAreas;
 }
 
-void Arma::resetCooldown()
+void Arma::limpiarAtaques()
 {
-    listaParaAtacar = true;
-    // Limpiar áreas de ataque de espada (los proyectiles se manejan aparte)
-    if(tipo == ESPADA) {
-        const_cast<QList<QRectF>&>(areasAtaque).clear();
-    }
+    areasAtaque.clear();
 }

@@ -10,16 +10,22 @@ CONFIG += c++17
 
 SOURCES += \
     arma.cpp \
+    enemigo.cpp \
+    entidad.cpp \
     jugadornivel1.cpp \
     main.cpp \
     mainwindow.cpp \
-    personaje.cpp
+    mejora.cpp \
+    nivel1.cpp
 
 HEADERS += \
     arma.h \
+    enemigo.h \
+    entidad.h \
     jugadornivel1.h \
     mainwindow.h \
-    personaje.h
+    mejora.h \
+    nivel1.h
 
 FORMS += \
     mainwindow.ui
