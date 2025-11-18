@@ -28,8 +28,6 @@ public:
     void iniciarNivel();
     void pausarNivel();
     void reanudarNivel();
-
-    // NUEVO MÉTODO - Agregar esta línea
     Mapa* getMapa() const { return mapa; }
 
 signals:
@@ -49,26 +47,33 @@ private slots:
     void generarOleada();
 
 private:
+    // *** MÉTODOS DE COLISIONES Y MAPA PRIMERO ***
+    bool verificarColisionMapa(const QRectF& area) const;
+    void inicializarMapaGrande();
+
+    // *** MÉTODOS DE CÁMARA ***
+    void actualizarCamara();
+    QPointF calcularPosicionCamara() const;
+    QRectF getVistaCamara() const;
+    bool estaEnVista(const QPointF& posicion) const;
+    bool estaEnVista(const QRectF& area) const;
+
+    // *** MÉTODOS DEL JUEGO ***
     void procesarColisiones();
     void generarEnemigo();
     void dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicion);
     void dibujarHUD(QPainter &painter);
     void dibujarArmas(QPainter &painter);
-    void dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite);
-    void dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite);
+    void dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa);
+    void dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa);
     void limpiarEnemigosMuertos();
     void mostrarOpcionesMejoras();
     void inicializarMejoras();
     QList<Mejora> generarOpcionesMejoras(int cantidad = 3);
-    QList<Mejora> opcionesMejorasActuales;
     void aplicarMejora(const Mejora& mejora);
     void resetearTeclas();
 
-    // NUEVOS MÉTODOS PARA MAPA
-    void inicializarMapa();
-    bool verificarColisionMapa(const QRectF& area) const;
-    QPointF ajustarPosicionColision(const QRectF& entidad, const QRectF& obstaculo) const;
-
+    // *** VARIABLES MIEMBRO ***
     JugadorNivel1 *jugador;
     QList<Enemigo*> enemigos;
     Mapa *mapa;
@@ -76,9 +81,9 @@ private:
     QTimer *timerJuego;
     QTimer *timerOleadas;
 
-    bool teclas[4]; // W, A, S, D
-    int tiempoTranscurrido; // en segundos
-    int tiempoObjetivo; // 2 minutos = 120 segundos
+    bool teclas[4];
+    int tiempoTranscurrido;
+    int tiempoObjetivo;
     int numeroOleada;
 
     // Configuración de oleadas
@@ -88,8 +93,18 @@ private:
     // Estado de mejoras
     bool mostrandoMejoras;
     QList<Mejora> todasLasMejoras;
+    QList<Mejora> opcionesMejorasActuales;
 
-    qint64 tiempoUltimoFrame; // Para calcular deltaTime
+    qint64 tiempoUltimoFrame;
+
+    // Variables de cámara
+    QPointF posicionCamara;
+    float suavizadoCamara;
+    QSize tamanoVista;
+
+    // Límites de spawn
+    float margenSpawnExterior;
+    float margenSpawnInterior;
 };
 
 #endif // NIVEL1_H

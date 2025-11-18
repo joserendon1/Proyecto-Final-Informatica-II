@@ -1,15 +1,15 @@
 #include "jugadornivel1.h"
 #include <QtMath>
-#include <QDebug>  // AGREGAR este include
+#include <QDebug>
 
 JugadorNivel1::JugadorNivel1() :
     nivel(1), experiencia(0), mejoraPendiente(false),
-    danioExtra(0), velocidadExtra(0),
-    ultimaDireccion(0, -1)
+    danioExtra(0), velocidadExtra(0)
 {
     vida = 100.0f;
     velocidad = 2.0f;
     posicion = QPointF(400, 300);
+    ultimaDireccion = QPointF(0, -1);
 
     for(int i = 0; i < 4; i++) {
         teclasPresionadas[i] = false;
@@ -31,19 +31,19 @@ void JugadorNivel1::actualizar(float deltaTime) {
     // ACTUALIZAR: Cada tecla actualiza la última dirección
     if(teclasPresionadas[0]) {
         velocidadMovimiento.setY(-1);
-        ultimaDireccion = QPointF(0, -1); // W = Arriba
+        ultimaDireccion = QPointF(0, -1);
     }
     if(teclasPresionadas[1]) {
         velocidadMovimiento.setX(-1);
-        ultimaDireccion = QPointF(-1, 0); // A = Izquierda
+        ultimaDireccion = QPointF(-1, 0);
     }
     if(teclasPresionadas[2]) {
         velocidadMovimiento.setY(1);
-        ultimaDireccion = QPointF(0, 1);  // S = Abajo
+        ultimaDireccion = QPointF(0, 1);
     }
     if(teclasPresionadas[3]) {
         velocidadMovimiento.setX(1);
-        ultimaDireccion = QPointF(1, 0);  // D = Derecha
+        ultimaDireccion = QPointF(1, 0);
     }
 
     if(velocidadMovimiento.x() != 0 && velocidadMovimiento.y() != 0) {
@@ -54,11 +54,14 @@ void JugadorNivel1::actualizar(float deltaTime) {
         mover(velocidadMovimiento);
     }
 
+    // *** COMENTAR ESTOS LÍMITES ANTIGUOS - AHORA SE MANEJAN EN NIVEL1 ***
+    /*
     // Limitar al área de juego
     if(posicion.x() < 0) posicion.setX(0);
     if(posicion.x() > 1300) posicion.setX(1300);
     if(posicion.y() < 0) posicion.setY(0);
     if(posicion.y() > 730) posicion.setY(730);
+    */
 
     // Actualizar armas con deltaTime
     for(Arma* arma : armas) {
@@ -101,7 +104,17 @@ void JugadorNivel1::aplicarMejoraVelocidad(float extra) {
 }
 
 void JugadorNivel1::ganarExperiencia(int exp) {
-    experiencia += exp;
+    int expBase = exp;
+
+    if(nivel > 5) {
+        expBase += nivel * 2;
+    }
+
+    experiencia += expBase;
+
+    qDebug() << "📈 +" << expBase << "EXP - Total:" << experiencia
+             << "/" << getExperienciaParaSiguienteNivel();
+
     if(experiencia >= getExperienciaParaSiguienteNivel()) {
         subirNivel();
     }
@@ -110,14 +123,38 @@ void JugadorNivel1::ganarExperiencia(int exp) {
 void JugadorNivel1::subirNivel() {
     nivel++;
     experiencia = 0;
-    vida += 25; // Curar parcialmente al subir de nivel
+
+    vida += 20 + (nivel * 2);
+
+    if(nivel % 3 == 0) {
+        velocidad += 0.1f;
+        qDebug() << "⚡ Bonus de velocidad por nivel múltiplo de 3!";
+    }
+
+    if(nivel % 5 == 0) {
+        aplicarMejoraDanio(2.0f);
+        qDebug() << "💥 Bonus de daño por nivel múltiplo de 5!";
+    }
+
     mejoraPendiente = true;
 
-    qDebug() << "¡Subiste al nivel" << nivel << "! Elige una mejora.";
+    qDebug() << "🎉 ¡Subiste al nivel" << nivel << "!";
+    qDebug() << "📊 Próximo nivel en:" << getExperienciaParaSiguienteNivel() << "EXP";
 }
 
 int JugadorNivel1::getExperienciaParaSiguienteNivel() const {
-    return nivel * 200;
+    int base = 100;
+    float factorDificultad = 1.8f;
+
+    int expRequerida = base * qPow(nivel, factorDificultad);
+
+    expRequerida = qMax(expRequerida, nivel * 150);
+
+    if(nivel > 10) {
+        expRequerida *= 0.9f;
+    }
+
+    return expRequerida;
 }
 
 QRectF JugadorNivel1::getAreaColision() const {

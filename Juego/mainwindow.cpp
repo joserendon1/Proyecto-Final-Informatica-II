@@ -6,18 +6,32 @@
 #include <QAction>
 #include <QMessageBox>
 #include <QDebug>
-#include <QVBoxLayout>  // NUEVO
+#include <QVBoxLayout>
+#include <QScreen>
+#include <QApplication>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , nivel1(nullptr)  // INICIALIZAR
+    , nivel1(nullptr)
 {
     ui->setupUi(this);
 
-    // Configurar ventana principal
+    // VENTANA 1024x768 FIJA
     setWindowTitle("Último Bastión - Defensa Medieval");
-    setMinimumSize(1350, 800);
+
+    int anchoVentana = 1024;
+    int altoVentana = 768;
+
+    setFixedSize(anchoVentana, altoVentana);
+
+    // Centrar ventana en la pantalla
+    QScreen *screen = QGuiApplication::primaryScreen();
+    QRect screenGeometry = screen->geometry();
+    int x = (screenGeometry.width() - anchoVentana) / 2;
+    int y = (screenGeometry.height() - altoVentana) / 2;
+    move(x, y);
+
     setFocusPolicy(Qt::StrongFocus);
 
     setupMenu();
@@ -26,10 +40,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Crear y configurar el nivel
     nivel1 = new Nivel1(this);
-    setCentralWidget(nivel1);  // Hacer el nivel el widget central
+    setCentralWidget(nivel1);
 
     // Conectar señales del juego
     connectGameSignals();
+
+    qDebug() << "🖥️ Ventana configurada - 1024x768 fija";
 
     statusBar()->showMessage("Juego listo - Usa WASD para moverte, P para pausar");
 }

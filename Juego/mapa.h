@@ -12,6 +12,9 @@
 #include <QTextStream>
 #include <QImage>
 
+// Forward declaration para evitar includes circulares
+class QWidget;
+
 class Mapa : public QObject
 {
     Q_OBJECT
@@ -22,6 +25,8 @@ public:
 
     bool cargarMapaDesdePNG(const QString& rutaMapa);
     void crearMapaBasico();
+    void crearMapaGrande(const QSize& tamano);
+    void escalarMapa(const QSize& nuevoTamano);
 
     void dibujar(QPainter& painter, const QRectF& vista);
     QPointF getPosicionInicioJugador() const;

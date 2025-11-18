@@ -33,7 +33,7 @@ public:
     int getNivel() const { return nivel; }
     void subirNivel();
 
-    // NUEVOS MÉTODOS PARA SPRITES
+    //MÉTODOS PARA SPRITES
     struct ProyectilSprite {
         QPointF posicion;
         QPointF direccion;
@@ -83,7 +83,7 @@ private:
     QList<QPointF> direccionesProyectiles;
     QList<float> tiemposVidaProyectiles;
 
-    // NUEVAS VARIABLES PARA SPRITES
+    //VARIABLES PARA SPRITES
     QList<ProyectilSprite> proyectilesSprites;
     QList<AreaAtaqueSprite> areasAtaqueSprites;
 };

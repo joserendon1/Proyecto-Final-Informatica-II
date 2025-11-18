@@ -11,26 +11,26 @@ Arma::Arma(Tipo tipoArma) :
     switch(tipo) {
     case ESPADA:
         nombre = "Espada Bizantina";
-        danioBase = 15.0f;
-        cooldownBase = 1200;
+        danioBase = 18.0f;
+        cooldownBase = 1100;
         color = QColor(255, 215, 0);
         break;
     case BALLESTA:
         nombre = "Ballesta";
-        danioBase = 12.0f;
-        cooldownBase = 1800;
+        danioBase = 14.0f;
+        cooldownBase = 1600;
         color = QColor(139, 69, 19);
         break;
     case ACEITE:
         nombre = "Aceite Hirviendo";
-        danioBase = 25.0f;
-        cooldownBase = 3000;
+        danioBase = 30.0f;
+        cooldownBase = 2800;
         color = QColor(255, 140, 0);
         break;
     case ARCO:
         nombre = "Arco Multidireccional";
-        danioBase = 8.0f;
-        cooldownBase = 1500;
+        danioBase = 10.0f;
+        cooldownBase = 1400;
         color = QColor(160, 82, 45);
         break;
     }

@@ -9,26 +9,35 @@
 
 Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
 {
-    // Configurar ventana
-    setFixedSize(1300, 730);
+    // TAMAÑO FIJO 1024x768
+    setFixedSize(1024, 768);
+    tamanoVista = QSize(1024, 768);
+
+    qDebug() << "🎮 Nivel1 - Vista 1024x768";
+
     setFocusPolicy(Qt::StrongFocus);
 
     SpriteManager::getInstance().preloadGameSprites();
 
-    // Inicializar mapa con PNG
+    // INICIALIZAR CÁMARA
+    posicionCamara = QPointF(0, 0);
+    suavizadoCamara = 0.08f;
+    margenSpawnExterior = 120.0f;  // Ajustado para vista más pequeña
+    margenSpawnInterior = 180.0f;  // Ajustado para vista más pequeña
+
+    // Inicializar mapa GRANDE
     mapa = new Mapa(this);
+    inicializarMapaGrande();
 
-    // Cargar tu mapa PNG
-    bool mapaCargado = mapa->cargarMapaDesdePNG(":/map/maps/map1.png");
-
-    if(!mapaCargado) {
-        qDebug() << "No se pudo cargar mapa PNG, usando mapa básico...";
-        mapa->crearMapaBasico();
-    }
-
-    // Inicializar jugador en posición del mapa
+    // Inicializar jugador
     jugador = new JugadorNivel1();
     jugador->setPosicion(mapa->getPosicionInicioJugador());
+
+    // Inicializar cámara en posición del jugador
+    QPointF posicionInicial = jugador->getPosicion();
+    posicionCamara = posicionInicial - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
+
+    qDebug() << "🎥 Cámara inicializada";
 
     // Inicializar timers
     timerJuego = new QTimer(this);
@@ -38,7 +47,7 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
     connect(timerJuego, &QTimer::timeout, this, &Nivel1::actualizarJuego);
     connect(timerOleadas, &QTimer::timeout, this, &Nivel1::generarOleada);
 
-    // INICIALIZAR TODAS LAS VARIABLES
+    // INICIALIZAR VARIABLES
     for(int i = 0; i < 4; i++) {
         teclas[i] = false;
     }
@@ -46,8 +55,8 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
     tiempoTranscurrido = 0;
     tiempoObjetivo = 120;
     numeroOleada = 1;
-    enemigosPorOleada = 2;
-    frecuenciaGeneracion = 5000;
+    enemigosPorOleada = 4;  // Un poco más de enemigos para vista más pequeña
+    frecuenciaGeneracion = 3500; // Oleadas más frecuentes
 
     mostrandoMejoras = false;
     opcionesMejorasActuales = QList<Mejora>();
@@ -70,6 +79,18 @@ void Nivel1::iniciarNivel()
 {
     timerJuego->start(16); // ~60 FPS
     timerOleadas->start(frecuenciaGeneracion);
+}
+
+void Nivel1::inicializarMapaGrande()
+{
+    // MAPA 5x MÁS GRANDE QUE 1024x768
+    QSize tamanoMapa(1024 * 5, 768 * 5); // 5120 x 3840 pixels
+
+    qDebug() << "🗺️ Creando mapa 5120x3840 (5x 1024x768)";
+
+    mapa->crearMapaGrande(tamanoMapa);
+
+    qDebug() << "✅ MAPA 5x LISTO - Área enorme para explorar!";
 }
 
 void Nivel1::resetearTeclas() {
@@ -217,6 +238,71 @@ void Nivel1::mostrarOpcionesMejoras()
     QMessageBox::information(this, "¡Nueva Arma Disponible!", mensaje);
 }
 
+void Nivel1::actualizarCamara()
+{
+    if(!jugador) return;
+
+    // Calcular posición objetivo de la cámara (centrada en el jugador)
+    QPointF objetivo = jugador->getPosicion() - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
+
+    // Aplicar suavizado (Lerp) - más suave
+    float factorSuavizado = 0.1f;
+    QPointF camaraAnterior = posicionCamara;
+    posicionCamara = posicionCamara + (objetivo - posicionCamara) * factorSuavizado;
+
+    // Limitar cámara a los bordes del mapa
+    QRectF limitesMapa = mapa->getLimitesMapa();
+
+    bool limitada = false;
+    if(posicionCamara.x() < limitesMapa.left()) {
+        posicionCamara.setX(limitesMapa.left());
+        limitada = true;
+    }
+    if(posicionCamara.y() < limitesMapa.top()) {
+        posicionCamara.setY(limitesMapa.top());
+        limitada = true;
+    }
+    if(posicionCamara.x() + tamanoVista.width() > limitesMapa.right()) {
+        posicionCamara.setX(limitesMapa.right() - tamanoVista.width());
+        limitada = true;
+    }
+    if(posicionCamara.y() + tamanoVista.height() > limitesMapa.bottom()) {
+        posicionCamara.setY(limitesMapa.bottom() - tamanoVista.height());
+        limitada = true;
+    }
+
+    // *** NUEVO: DEBUG SOLO SI HAY CAMBIO SIGNIFICATIVO ***
+    static int debugCounter = 0;
+    debugCounter++;
+    if(debugCounter % 30 == 0 || (camaraAnterior - posicionCamara).manhattanLength() > 50) {
+        qDebug() << "🎥 Cámara - Jugador:" << jugador->getPosicion()
+            << "Objetivo:" << objetivo << "Actual:" << posicionCamara
+            << "Limitada:" << limitada;
+    }
+}
+
+QRectF Nivel1::getVistaCamara() const
+{
+    return QRectF(posicionCamara, tamanoVista);
+}
+
+QPointF Nivel1::calcularPosicionCamara() const
+{
+    return posicionCamara;
+}
+
+bool Nivel1::estaEnVista(const QPointF& posicion) const
+{
+    QRectF vista = getVistaCamara();
+    return vista.contains(posicion);
+}
+
+bool Nivel1::estaEnVista(const QRectF& area) const
+{
+    QRectF vista = getVistaCamara();
+    return vista.intersects(area);
+}
+
 void Nivel1::actualizarJuego()
 {
     // Calcular deltaTime
@@ -234,53 +320,108 @@ void Nivel1::actualizarJuego()
     if(acumuladorTiempo >= 1000) {
         tiempoTranscurrido++;
         acumuladorTiempo = 0;
+
+        qDebug() << "⏰ Tiempo:" << tiempoTranscurrido << "/" << tiempoObjetivo
+                 << "Oleada:" << numeroOleada << "Enemigos:" << enemigos.size();
     }
 
-    // Guardar posición anterior para colisiones
+    // *** NUEVO: GUARDAR POSICIÓN ANTERIOR PARA COLISIONES ***
     QPointF posicionAnterior = jugador->getPosicion();
 
     // Actualizar jugador
     jugador->procesarInput(teclas);
     jugador->actualizar(deltaTime);
 
-    // NUEVO: Verificar colisiones con el mapa
+    // *** NUEVO: VERIFICAR COLISIONES CON MAPA PRIMERO ***
     QRectF areaJugador = jugador->getAreaColision();
     if(!verificarColisionMapa(areaJugador)) {
         // Hay colisión, revertir movimiento
         jugador->setPosicion(posicionAnterior);
+        qDebug() << "🚫 Colisión con mapa - Revertir movimiento";
     }
 
-    // Actualizar enemigos con colisiones
+    // *** NUEVO: SOLO LIMITAR SI REALMENTE SE SALIÓ DEL MAPA ***
+    QRectF limitesMapa = mapa->getLimitesMapa();
+    QPointF posActual = jugador->getPosicion();
+    QRectF areaActual = jugador->getAreaColision();
+
+    bool necesitaAjuste = false;
+    QPointF nuevaPosicion = posActual;
+
+    if(areaActual.left() < limitesMapa.left()) {
+        nuevaPosicion.setX(nuevaPosicion.x() + (limitesMapa.left() - areaActual.left()));
+        necesitaAjuste = true;
+    }
+    if(areaActual.right() > limitesMapa.right()) {
+        nuevaPosicion.setX(nuevaPosicion.x() - (areaActual.right() - limitesMapa.right()));
+        necesitaAjuste = true;
+    }
+    if(areaActual.top() < limitesMapa.top()) {
+        nuevaPosicion.setY(nuevaPosicion.y() + (limitesMapa.top() - areaActual.top()));
+        necesitaAjuste = true;
+    }
+    if(areaActual.bottom() > limitesMapa.bottom()) {
+        nuevaPosicion.setY(nuevaPosicion.y() - (areaActual.bottom() - limitesMapa.bottom()));
+        necesitaAjuste = true;
+    }
+
+    if(necesitaAjuste) {
+        jugador->setPosicion(nuevaPosicion);
+        qDebug() << "📏 Ajuste de límites del mapa aplicado";
+    }
+
+    // *** NUEVO: ACTUALIZAR CÁMARA DESPUÉS DE TODOS LOS AJUSTES ***
+    actualizarCamara();
+
+    // Actualizar enemigos
     for(Enemigo *enemigo : enemigos) {
         QPointF posicionAnteriorEnemigo = enemigo->getPosicion();
         enemigo->seguirJugador(jugador->getPosicion());
         enemigo->actualizar(deltaTime);
 
-        // Verificar colisión con mapa
-        if(!verificarColisionMapa(enemigo->getAreaColision())) {
+        // Verificar colisiones de enemigos con mapa
+        QRectF areaEnemigo = enemigo->getAreaColision();
+        if(!verificarColisionMapa(areaEnemigo)) {
             enemigo->setPosicion(posicionAnteriorEnemigo);
         }
+
+        // Limitar enemigos al mapa (solo si realmente se salen)
+        QPointF posEnemigo = enemigo->getPosicion();
+        QRectF areaEnemigoActual = enemigo->getAreaColision();
+
+        if(areaEnemigoActual.left() < limitesMapa.left())
+            posEnemigo.setX(posEnemigo.x() + (limitesMapa.left() - areaEnemigoActual.left()));
+        if(areaEnemigoActual.right() > limitesMapa.right())
+            posEnemigo.setX(posEnemigo.x() - (areaEnemigoActual.right() - limitesMapa.right()));
+        if(areaEnemigoActual.top() < limitesMapa.top())
+            posEnemigo.setY(posEnemigo.y() + (limitesMapa.top() - areaEnemigoActual.top()));
+        if(areaEnemigoActual.bottom() > limitesMapa.bottom())
+            posEnemigo.setY(posEnemigo.y() - (areaEnemigoActual.bottom() - limitesMapa.bottom()));
+
+        enemigo->setPosicion(posEnemigo);
     }
 
-    // El resto del método se mantiene igual...
+    // Procesar colisiones entre armas y enemigos
     procesarColisiones();
     limpiarEnemigosMuertos();
 
+    // Mostrar mejoras si hay pendiente
     if(jugador->tieneMejoraPendiente() && !mostrandoMejoras) {
         mostrarOpcionesMejoras();
     }
 
+    // Verificar victoria/derrota
     if(tiempoTranscurrido >= tiempoObjetivo) {
         timerJuego->stop();
         timerOleadas->stop();
-        qDebug() << "¡Nivel completado! Has sobrevivido 2 minutos";
+        qDebug() << "🎉 ¡Nivel completado! Has sobrevivido" << tiempoObjetivo << "segundos";
         emit levelCompleted();
     }
 
     if(!jugador->estaViva()) {
         timerJuego->stop();
         timerOleadas->stop();
-        qDebug() << "Game Over - Has sido derrotado";
+        qDebug() << "💀 Game Over - Has sido derrotado";
         emit gameOver();
     }
 
@@ -306,34 +447,47 @@ bool Nivel1::verificarColisionMapa(const QRectF& area) const
         }
     }
 
-    // Verificar límites del mapa
-    QRectF limites = mapa->getLimitesMapa();
-    if(!limites.contains(area)) {
-        return false;
-    }
-
     return true; // No hay colisión
 }
 
 void Nivel1::generarOleada()
 {
-    int enemigosBase = 2 + (numeroOleada / 3);
-    int enemigosExtra = QRandomGenerator::global()->bounded(2);
+    // SISTEMA DE OLEADAS MÁS AGRESIVO
+    int enemigosBase = 3 + (numeroOleada / 2);
+    int enemigosExtra = QRandomGenerator::global()->bounded(3);
+
+    // A partir de la oleada 5, garantizar más enemigos
+    if(numeroOleada >= 5) {
+        enemigosBase += 2;
+    }
+
+    // A partir de la oleada 10, enjambres más grandes
+    if(numeroOleada >= 10) {
+        enemigosBase += 3;
+        enemigosExtra = QRandomGenerator::global()->bounded(5);
+    }
+
+    qDebug() << "🔥 OLEADA" << numeroOleada << "- Generando"
+             << (enemigosBase + enemigosExtra) << "enemigos";
 
     for(int i = 0; i < enemigosBase + enemigosExtra; i++) {
         generarEnemigo();
     }
 
     numeroOleada++;
-    frecuenciaGeneracion = qMax(1500, frecuenciaGeneracion - 50); // Más gradual
+
+    // PROGRESIÓN MÁS AGRESIVA EN FRECUENCIA
+    frecuenciaGeneracion = qMax(1200, frecuenciaGeneracion - 80);
     timerOleadas->setInterval(frecuenciaGeneracion);
+
+    qDebug() << "⏱️  Siguiente oleada en:" << frecuenciaGeneracion << "ms";
 }
 
 void Nivel1::generarEnemigo()
 {
-    // Determinar tipo de enemigo según oleada
+    // SISTEMA DE TIPOS DE ENEMIGOS MEJORADO
     int tipoEnemigo;
-    int probabilidadFuerte = qMin(20 + (numeroOleada - 1) * 10, 60);
+    int probabilidadFuerte = qMin(15 + (numeroOleada - 1) * 8, 75);
 
     if(QRandomGenerator::global()->bounded(100) < probabilidadFuerte) {
         tipoEnemigo = 2; // Fuerte
@@ -344,30 +498,50 @@ void Nivel1::generarEnemigo()
     // Crear enemigo con el tipo específico
     Enemigo *enemigo = new Enemigo(tipoEnemigo);
 
-    // Generar en posición aleatoria en los bordes
-    int lado = QRandomGenerator::global()->bounded(4);
-    QPointF posicion;
+    // SPAWN EN BORDES DEL MAPA, FUERA DE VISTA
+    QRectF limitesMapa = mapa->getLimitesMapa();
+    QRectF vistaActual = getVistaCamara();
 
-    switch(lado) {
-    case 0: // Arriba
-        posicion = QPointF(QRandomGenerator::global()->bounded(1300), -20);
-        break;
-    case 1: // Derecha
-        posicion = QPointF(1320, QRandomGenerator::global()->bounded(730));
-        break;
-    case 2: // Abajo
-        posicion = QPointF(QRandomGenerator::global()->bounded(1300), 750);
-        break;
-    case 3: // Izquierda
-        posicion = QPointF(-20, QRandomGenerator::global()->bounded(730));
-        break;
-    }
+    // Área donde NO spawnear (vista actual + margen interior)
+    QRectF areaNoSpawn = vistaActual.adjusted(-margenSpawnInterior, -margenSpawnInterior,
+                                              margenSpawnInterior, margenSpawnInterior);
+
+    QPointF posicion;
+    int intentos = 0;
+    const int MAX_INTENTOS = 20;
+
+    do {
+        // Elegir un borde aleatorio del mapa
+        int borde = QRandomGenerator::global()->bounded(4);
+        switch(borde) {
+        case 0: // Arriba
+            posicion = QPointF(limitesMapa.left() + QRandomGenerator::global()->bounded(limitesMapa.width()),
+                               limitesMapa.top() - margenSpawnExterior);
+            break;
+        case 1: // Derecha
+            posicion = QPointF(limitesMapa.right() + margenSpawnExterior,
+                               limitesMapa.top() + QRandomGenerator::global()->bounded(limitesMapa.height()));
+            break;
+        case 2: // Abajo
+            posicion = QPointF(limitesMapa.left() + QRandomGenerator::global()->bounded(limitesMapa.width()),
+                               limitesMapa.bottom() + margenSpawnExterior);
+            break;
+        case 3: // Izquierda
+            posicion = QPointF(limitesMapa.left() - margenSpawnExterior,
+                               limitesMapa.top() + QRandomGenerator::global()->bounded(limitesMapa.height()));
+            break;
+        }
+        intentos++;
+    } while (areaNoSpawn.contains(posicion) && intentos < MAX_INTENTOS);
 
     enemigo->setPosicion(posicion);
     enemigos.append(enemigo);
 
-    qDebug() << "🔥 ENEMIGO GENERADO - Tipo:" << tipoEnemigo
-             << "Pos:" << posicion
+    // *** NUEVO: MÁS INFORMACIÓN EN DEBUG ***
+    static int enemigoCounter = 0;
+    enemigoCounter++;
+    qDebug() << "👹 ENEMIGO #" << enemigoCounter << "- Tipo:" << tipoEnemigo
+             << "Pos:" << posicion << "En vista:" << estaEnVista(posicion)
              << "Total enemigos:" << enemigos.size();
 }
 
@@ -475,207 +649,219 @@ void Nivel1::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // NUEVO: Dibujar fondo temporal
-    painter.fillRect(rect(), QBrush(QColor(60, 60, 80))); // Fondo gris oscuro
+    // VISTA DE CÁMARA
+    QRectF vistaCamara = getVistaCamara();
 
-    // DEBUG: Dibujar texto de diagnóstico
-    painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 14));
-    painter.drawText(10, 30, "Diagnóstico del Mapa:");
+    static int paintCounter = 0;
+    paintCounter++;
+    if(paintCounter % 60 == 0) {
+        qDebug() << "🎨 Paint #" << paintCounter << "- Vista cámara:" << vistaCamara;
+        qDebug() << "   Jugador pos:" << jugador->getPosicion();
+        qDebug() << "   Enemigos totales:" << enemigos.size();
+        qDebug() << "   Enemigos en vista:" << std::count_if(enemigos.begin(), enemigos.end(),
+                                                             [this](Enemigo* e) { return e->estaViva() && estaEnVista(e->getPosicion()); });
+    }
 
-    if(mapa) {
-        painter.drawText(10, 60, "Mapa: CREADO");
-        painter.drawText(10, 90, QString("Tamaño: %1x%2 tiles").arg(mapa->getTamanoMapa().width()).arg(mapa->getTamanoMapa().height()));
+    // *** NUEVO: DIBUJAR FONDO DE EMERGENCIA SI EL MAPA FALLA ***
+    if(!mapa || mapa->getMapaCompleto().isNull()) {
+        painter.fillRect(rect(), QBrush(QColor(80, 80, 120)));
+        painter.setPen(Qt::white);
+        painter.setFont(QFont("Arial", 16));
+        painter.drawText(rect().center() - QPoint(150, 0), "MAPA NO CARGADO");
+        qDebug() << "❌ ERROR: Mapa no disponible en paintEvent";
+        return;
+    }
+
+    // DIBUJAR EL MAPA
+    QPixmap mapaCompleto = mapa->getMapaCompleto();
+    if(mapaCompleto.isNull()) {
+        painter.fillRect(rect(), QBrush(QColor(100, 100, 140)));
+        painter.setPen(Qt::yellow);
+        painter.drawText(10, 30, "MAPA NULO - Usando fondo de emergencia");
     } else {
-        painter.drawText(10, 60, "Mapa: NULL");
+        // *** NUEVO: DEBUG DEL DIBUJO DEL MAPA ***
+        if(paintCounter % 120 == 0) {
+            qDebug() << "🎨 Dibujando mapa - Tamaño:" << mapaCompleto.size();
+            qDebug() << "   Vista cámara:" << vistaCamara;
+        }
+
+        mapa->dibujar(painter, vistaCamara);
     }
 
-    // Intentar dibujar el mapa
-    QRectF vista(0, 0, width(), height());
-    if(mapa) {
-        mapa->dibujar(painter, vista);
-    }
-
-    // El resto de tu código de dibujo (jugador, enemigos, etc.)
     QPointF playerPos = jugador->getPosicion();
+    QPointF playerPosRelativa = playerPos - vistaCamara.topLeft();
 
-    // DEBUG: Dibujar posición del jugador
-    painter.setPen(Qt::yellow);
-    painter.drawText(10, 120, QString("Jugador: %1, %2").arg(playerPos.x()).arg(playerPos.y()));
-    // === VARIABLES DE ANIMACIÓN (declaradas al inicio) ===
+    // === ANIMACIÓN DEL JUGADOR ===
     static int currentFrame = 0;
     static int animationCounter = 0;
-    static int debugCounter = 0;
 
-    // Determinar qué sprite usar según si se está moviendo
-    bool isMoving = (teclas[0] || teclas[1] || teclas[2] || teclas[3]); // W, A, S, D presionadas
+    bool isMoving = (teclas[0] || teclas[1] || teclas[2] || teclas[3]);
+    QPixmap playerSpriteSheet = isMoving ?
+                                    SpriteManager::getInstance().getSprite("player_move") :
+                                    SpriteManager::getInstance().getSprite("player_idle");
 
-    QPixmap playerSpriteSheet;
-    if(isMoving) {
-        playerSpriteSheet = SpriteManager::getInstance().getSprite("player_move");
-    } else {
-        playerSpriteSheet = SpriteManager::getInstance().getSprite("player_idle");
-    }
-
+    // DIBUJAR JUGADOR
     if(!playerSpriteSheet.isNull()) {
-        // Dimensiones para sprite de 1152x192 con 6 frames
-        int frameWidth = 192;   // 1152 ÷ 6 = 192
-        int frameHeight = 192;  // Alto completo
+        int frameWidth = 192;
+        int frameHeight = 192;
 
-        // Animación: cambiar frame según el tiempo
         animationCounter++;
-
-        // Cambiar frame cada 8 frames del juego (ajustable)
         if(animationCounter >= 8) {
-            currentFrame = (currentFrame + 1) % 6; // 6 frames totales, ciclo 0-5
+            currentFrame = (currentFrame + 1) % 6;
             animationCounter = 0;
         }
 
-        // Extraer el frame actual de la sprite sheet
         QRect frameRect(currentFrame * frameWidth, 0, frameWidth, frameHeight);
         QPixmap frame = playerSpriteSheet.copy(frameRect);
 
-        // Dibujar el frame escalado a tamaño adecuado para el juego
-        int displayWidth = 52;   // Tamaño en pantalla
-        int displayHeight = 52;
-        QRectF displayRect(playerPos.x() - displayWidth/2,
-                           playerPos.y() - displayHeight/2,
+        int displayWidth = 80;
+        int displayHeight = 80;
+
+        QRectF displayRect(playerPosRelativa.x() - displayWidth/2,
+                           playerPosRelativa.y() - displayHeight/2,
                            displayWidth, displayHeight);
         painter.drawPixmap(displayRect, frame, frame.rect());
 
     } else {
-        // Fallback: dibujar círculo azul si no hay sprite
-        painter.setBrush(QBrush(QColor(0, 100, 255)));
-        painter.setPen(QPen(Qt::white, 2));
-        painter.drawEllipse(playerPos, 15, 15);
+        // *** NUEVO: JUGADOR DE FALLBACK MÁS VISIBLE ***
+        painter.setBrush(QBrush(QColor(0, 150, 255))); // Azul brillante
+        painter.setPen(QPen(Qt::white, 3));
+        painter.drawEllipse(playerPosRelativa, 30, 30);
+
+        // Indicador de dirección
+        painter.drawLine(playerPosRelativa,
+                         playerPosRelativa + jugador->getUltimaDireccion() * 40);
     }
 
-    int enemyFrame = 0;
-    int enemyAnimCounter = 0;
+    // *** NUEVO: CONTADOR DE ENEMIGOS EN PANTALLA ***
+    int enemigosEnVista = 0;
+
+    // DIBUJAR ENEMIGOS
+    int enemyFrame = (QDateTime::currentMSecsSinceEpoch() / 150) % 6;
 
     for(Enemigo *enemigo : enemigos) {
         if(enemigo->estaViva()) {
             QPointF enemyPos = enemigo->getPosicion();
-            int enemyType = enemigo->getTipo();
+            bool enVista = estaEnVista(enemyPos);
 
-            // DEBUG: Verificar que los enemigos existen
-            static int debugCounter = 0;
-            if(debugCounter % 180 == 0) { // Cada 3 segundos aprox
-                qDebug() << "Enemigos activos:" << enemigos.size()
-                         << "Tipo:" << enemyType << "Pos:" << enemyPos;
-            }
-            debugCounter++;
+            if(enVista) {
+                enemigosEnVista++;
+                QPointF enemyPosRelativa = enemyPos - vistaCamara.topLeft();
+                int enemyType = enemigo->getTipo();
 
-            // Seleccionar sprite según el tipo
-            QString spriteName = (enemyType == 1) ? "enemy_weak" : "enemy_strong";
-            QPixmap enemySpriteSheet = SpriteManager::getInstance().getSprite(spriteName);
+                QString spriteName = (enemyType == 1) ? "enemy_weak" : "enemy_strong";
+                QPixmap enemySpriteSheet = SpriteManager::getInstance().getSprite(spriteName);
 
-            if(!enemySpriteSheet.isNull()) {
-                // Animación simple basada en tiempo
-                enemyFrame = (QDateTime::currentMSecsSinceEpoch() / 150) % 6; // 6 frames
+                if(!enemySpriteSheet.isNull()) {
+                    int frameWidth, frameHeight, displayWidth, displayHeight;
 
-                // Configuración específica por tipo
-                int frameWidth, frameHeight;
-                int displayWidth, displayHeight;
+                    if(enemyType == 1) {
+                        frameWidth = 320; frameHeight = 320;
+                        displayWidth = 60; displayHeight = 60;
+                    } else {
+                        frameWidth = 192; frameHeight = 192;
+                        displayWidth = 70; displayHeight = 70;
+                    }
 
-                if(enemyType == 1) {
-                    // ENEMIGO DÉBIL: 1920x320 con 6 frames
-                    frameWidth = 320;   // 1920 ÷ 6 = 320
-                    frameHeight = 320;  // Alto completo
-                    displayWidth = 42;  // Tamaño en pantalla
-                    displayHeight = 42;
+                    QRect frameRect(enemyFrame * frameWidth, 0, frameWidth, frameHeight);
+                    QPixmap frame = enemySpriteSheet.copy(frameRect);
+
+                    QRectF displayRect(enemyPosRelativa.x() - displayWidth/2,
+                                       enemyPosRelativa.y() - displayHeight/2,
+                                       displayWidth, displayHeight);
+                    painter.drawPixmap(displayRect, frame, frame.rect());
+
                 } else {
-                    // ENEMIGO FUERTE: 1152x192 con 6 frames
-                    frameWidth = 192;   // 1152 ÷ 6 = 192
-                    frameHeight = 192;  // Alto completo
-                    displayWidth = 52;  // Más grande
-                    displayHeight = 52;
+                    // *** NUEVO: ENEMIGOS DE FALLBACK MÁS VISIBLES ***
+                    if(enemyType == 1) {
+                        painter.setBrush(QBrush(QColor(255, 100, 100))); // Rojo brillante
+                        painter.drawEllipse(enemyPosRelativa, 25, 25);
+                    } else {
+                        painter.setBrush(QBrush(QColor(200, 50, 50)));   // Rojo oscuro
+                        painter.drawEllipse(enemyPosRelativa, 35, 35);
+                    }
+                    painter.setPen(QPen(Qt::white, 2));
                 }
 
-                // Extraer frame actual
-                QRect frameRect(enemyFrame * frameWidth, 0, frameWidth, frameHeight);
-                QPixmap frame = enemySpriteSheet.copy(frameRect);
-
-                // Dibujar enemigo
-                QRectF displayRect(enemyPos.x() - displayWidth/2,
-                                   enemyPos.y() - displayHeight/2,
-                                   displayWidth, displayHeight);
-                painter.drawPixmap(displayRect, frame, frame.rect());
-
-            } else {
-                // Fallback con colores diferentes
-                qDebug() << "Sprite no encontrado para:" << spriteName;
-                if(enemyType == 1) {
-                    painter.setBrush(QBrush(QColor(255, 100, 100))); // Rojo claro
-                    painter.drawEllipse(enemyPos, 12, 12);
-                } else {
-                    painter.setBrush(QBrush(QColor(180, 50, 50)));   // Rojo oscuro
-                    painter.drawEllipse(enemyPos, 16, 16);
-                }
-                painter.setPen(QPen(Qt::white, 1));
+                // Dibujar barra de vida
+                dibujarBarraVidaEnemigo(painter, enemigo, enemyPosRelativa);
             }
         }
     }
 
-    // Dibujar armas y ataques
+    // DIBUJAR ARMAS
     dibujarArmas(painter);
 
-    // Dibujar HUD
+    // DIBUJAR HUD MEJORADO
     dibujarHUD(painter);
 
-    // Debug: mostrar información de animación (opcional)
-    debugCounter++;
-    if(debugCounter % 120 == 0) { // Cada 2 segundos aprox
-        qDebug() << "Animación - Frame:" << currentFrame << "Movimiento:" << isMoving;
-    }
+    // *** NUEVO: INFO DE DEBUG MEJORADA ***
+    painter.setPen(Qt::cyan);
+    painter.setFont(QFont("Arial", 12));
+    painter.drawText(10, 280, QString("Cámara: %1, %2").arg(vistaCamara.x()).arg(vistaCamara.y()));
+    painter.drawText(10, 300, QString("Jugador: %1, %2").arg(playerPos.x()).arg(playerPos.y()));
+    painter.drawText(10, 320, QString("Enemigos: %1/%2 en vista").arg(enemigosEnVista).arg(enemigos.size()));
+    painter.drawText(10, 340, QString("Mapa: %1x%2").arg(mapa->getTamanoMapa().width()).arg(mapa->getTamanoMapa().height()));
 }
 
 void Nivel1::dibujarArmas(QPainter &painter)
 {
+    // OBTENER VISTA DE CÁMARA ACTUAL
+    QRectF vistaCamara = getVistaCamara();
+
     for(Arma* arma : jugador->getArmas()) {
 
-        // 1. DIBUJAR PROYECTILES (Ballesta y Arco) - MISMO SPRITE
+        // 1. DIBUJAR PROYECTILES (Ballesta y Arco)
         QList<Arma::ProyectilSprite> proyectiles = arma->getProyectilesSprites();
         for(const auto& proyectil : proyectiles) {
-            // USAR EL MISMO SPRITE PARA AMBAS ARMAS
-            QPixmap sprite = SpriteManager::getInstance().getSprite("projectile_arrow");
+            // Verificar si el proyectil está en vista
+            if(estaEnVista(proyectil.posicion)) {
+                QPointF proyectilRelativo = proyectil.posicion - vistaCamara.topLeft();
 
-            if(!sprite.isNull()) {
-                painter.save();
-                painter.translate(proyectil.posicion);
-                painter.rotate(proyectil.rotacion);
+                QPixmap sprite = SpriteManager::getInstance().getSprite("projectile_arrow");
+                if(!sprite.isNull()) {
+                    painter.save();
+                    painter.translate(proyectilRelativo);
+                    painter.rotate(proyectil.rotacion);
 
-                // Tamaño del proyectil
-                QSize displaySize(16, 16);
-                QRectF destRect(-displaySize.width()/2, -displaySize.height()/2,
-                                displaySize.width(), displaySize.height());
-                painter.drawPixmap(destRect, sprite, sprite.rect());
+                    // Tamaño del proyectil
+                    QSize displaySize(24, 24);
+                    QRectF destRect(-displaySize.width()/2, -displaySize.height()/2,
+                                    displaySize.width(), displaySize.height());
+                    painter.drawPixmap(destRect, sprite, sprite.rect());
 
-                painter.restore();
-            } else {
-                // Fallback: círculos de colores diferentes para distinguir
-                if(arma->getTipo() == Arma::BALLESTA) {
-                    painter.setBrush(QBrush(QColor(139, 69, 19))); // Marrón para ballesta
+                    painter.restore();
                 } else {
-                    painter.setBrush(QBrush(QColor(160, 82, 45))); // Marrón claro para arco
+                    // Fallback: círculos de colores diferentes para distinguir
+                    if(arma->getTipo() == Arma::BALLESTA) {
+                        painter.setBrush(QBrush(QColor(139, 69, 19))); // Marrón para ballesta
+                    } else {
+                        painter.setBrush(QBrush(QColor(160, 82, 45))); // Marrón claro para arco
+                    }
+                    painter.drawEllipse(proyectilRelativo, 6, 6);
                 }
-                painter.drawEllipse(proyectil.posicion, 4, 4);
             }
         }
 
         // 2. DIBUJAR ATAQUES DE ÁREA (Espada y Aceite)
         QList<Arma::AreaAtaqueSprite> areas = arma->getAreasAtaqueSprites();
         for(const auto& areaSprite : areas) {
-            if(arma->getTipo() == Arma::ESPADA) {
-                dibujarAtaqueEspada(painter, arma, areaSprite);
-            } else if(arma->getTipo() == Arma::ACEITE) {
-                dibujarAtaqueAceite(painter, arma, areaSprite);
+            // Verificar si el área de ataque está en vista
+            if(estaEnVista(areaSprite.area)) {
+                // Convertir área a coordenadas relativas
+                QRectF areaRelativa = areaSprite.area.translated(-vistaCamara.topLeft());
+
+                if(arma->getTipo() == Arma::ESPADA) {
+                    dibujarAtaqueEspada(painter, arma, areaSprite, areaRelativa);
+                } else if(arma->getTipo() == Arma::ACEITE) {
+                    dibujarAtaqueAceite(painter, arma, areaSprite, areaRelativa);
+                }
             }
         }
     }
 }
 
-void Nivel1::dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite)
+void Nivel1::dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa)
 {
     QPixmap spriteFrame = SpriteManager::getInstance().getSpriteFrame(
         areaSprite.spriteName,
@@ -685,15 +871,15 @@ void Nivel1::dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::Area
     if(!spriteFrame.isNull()) {
         painter.save();
 
-        // Posicionar en el centro del área de ataque
-        QPointF centro = areaSprite.area.center();
+        // Posicionar en el centro del área de ataque RELATIVA
+        QPointF centro = areaRelativa.center();
         painter.translate(centro);
 
         // Aplicar rotación según la dirección del ataque
         painter.rotate(areaSprite.rotacion);
 
         // Escalar el sprite para que coincida con el área de ataque
-        QSizeF spriteSize = areaSprite.area.size();
+        QSizeF spriteSize = areaRelativa.size();
         QRectF destRect(-spriteSize.width()/2, -spriteSize.height()/2,
                         spriteSize.width(), spriteSize.height());
 
@@ -702,15 +888,14 @@ void Nivel1::dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::Area
 
     } else {
         // Fallback: dibujo geométrico
-        qDebug() << "Sprite de espada no encontrado, usando fallback";
         QColor colorArma = arma->getColor();
         painter.setBrush(QBrush(colorArma.lighter(150), Qt::Dense4Pattern));
         painter.setPen(QPen(colorArma.darker(130), 2));
-        painter.drawRect(areaSprite.area);
+        painter.drawRect(areaRelativa);
     }
 }
 
-void Nivel1::dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite)
+void Nivel1::dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa)
 {
     QPixmap spriteFrame = SpriteManager::getInstance().getSpriteFrame(
         areaSprite.spriteName,
@@ -720,98 +905,95 @@ void Nivel1::dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::Area
     if(!spriteFrame.isNull()) {
         painter.save();
 
-        QPointF centro = areaSprite.area.center();
+        QPointF centro = areaRelativa.center();
         painter.translate(centro);
 
         // Para el aceite, usar el tamaño del área pero mantener la relación de aspecto
-        float radio = areaSprite.area.width() / 2;
+        float radio = areaRelativa.width() / 2;
         QRectF destRect(-radio, -radio, radio * 2, radio * 2);
 
         painter.drawPixmap(destRect, spriteFrame, spriteFrame.rect());
         painter.restore();
 
-        // DEBUG: Mostrar información del aceite (opcional)
-        static int oilDebugCounter = 0;
-        if(oilDebugCounter % 90 == 0) {
-            qDebug() << "Aceite - Frame:" << (areaSprite.frameActual % areaSprite.totalFrames)
-            << "/" << areaSprite.totalFrames
-            << "Área:" << areaSprite.area
-            << "Tiempo vida:" << areaSprite.tiempoVida;
-        }
-        oilDebugCounter++;
-
     } else {
         // Fallback: dibujo geométrico
-        qDebug() << "❌ Sprite de aceite no encontrado, usando fallback geométrico";
         QColor colorArma = arma->getColor();
-
-        // Dibujo más elaborado para el fallback
         painter.setBrush(QBrush(colorArma, Qt::DiagCrossPattern));
         painter.setPen(QPen(colorArma.darker(), 2));
-        painter.drawEllipse(areaSprite.area);
-
-        // Efecto de burbujas
-        painter.setBrush(QBrush(colorArma.lighter(120)));
-        painter.setPen(Qt::NoPen);
-
-        // Dibujar algunas burbujas aleatorias
-        for(int i = 0; i < 5; i++) {
-            float offsetX = (QRandomGenerator::global()->bounded(200) - 100) / 100.0f * areaSprite.area.width() / 3;
-            float offsetY = (QRandomGenerator::global()->bounded(200) - 100) / 100.0f * areaSprite.area.height() / 3;
-            QPointF bubblePos = areaSprite.area.center() + QPointF(offsetX, offsetY);
-            float bubbleSize = QRandomGenerator::global()->bounded(3) + 2;
-            painter.drawEllipse(bubblePos, bubbleSize, bubbleSize);
-        }
+        painter.drawEllipse(areaRelativa);
     }
 }
 
 void Nivel1::dibujarHUD(QPainter &painter)
 {
     painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 12));
+    painter.setFont(QFont("Arial", 10)); // Fuente un poco más pequeña
 
-    painter.drawText(10, 20, QString("Vida: %1").arg(jugador->getVida()));
-    painter.drawText(10, 40, QString("Nivel: %1").arg(jugador->getNivel()));
-    painter.drawText(10, 60, QString("EXP: %1/%2").arg(jugador->getExperiencia())
-                                 .arg(jugador->getExperienciaParaSiguienteNivel()));
+    // Información básica - posiciones ajustadas
+    painter.drawText(10, 15, QString("Vida: %1").arg(jugador->getVida()));
+    painter.drawText(10, 30, QString("Nivel: %1").arg(jugador->getNivel()));
 
-    painter.drawText(10, 80, QString("Tiempo: %1/%2").arg(tiempoTranscurrido)
-                                 .arg(tiempoObjetivo));
-    painter.drawText(10, 100, QString("Oleada: %1").arg(numeroOleada));
-    painter.drawText(10, 120, QString("Enemigos: %1").arg(enemigos.size()));
+    // Barra de experiencia más pequeña
+    int expActual = jugador->getExperiencia();
+    int expRequerida = jugador->getExperienciaParaSiguienteNivel();
+    float porcentajeEXP = (float)expActual / expRequerida;
 
-    int yPos = 140;
+    QRectF barraEXPFondo(10, 40, 150, 6); // Más estrecha
+    QRectF barraEXP(10, 40, 150 * porcentajeEXP, 6);
+
+    painter.setBrush(QBrush(QColor(50, 50, 50)));
+    painter.setPen(Qt::NoPen);
+    painter.drawRect(barraEXPFondo);
+
+    painter.setBrush(QBrush(QColor(0, 200, 255)));
+    painter.drawRect(barraEXP);
+
+    painter.setPen(Qt::white);
+    painter.drawText(15, 48, QString("EXP: %1/%2").arg(expActual).arg(expRequerida));
+
+    // Tiempo y oleadas
+    painter.drawText(10, 65, QString("Tiempo: %1/%2").arg(tiempoTranscurrido).arg(tiempoObjetivo));
+    painter.drawText(10, 80, QString("Oleada: %1").arg(numeroOleada));
+    painter.drawText(10, 95, QString("Enemigos: %1").arg(enemigos.size()));
+
+    // Información de siguiente oleada
+    painter.drawText(10, 110, QString("Siguiente: %1s").arg(frecuenciaGeneracion / 1000));
+
+    // Armás activas - posición ajustada
+    int yPos = 125;
     painter.drawText(10, yPos, "Armas Activas:");
-    yPos += 20;
+    yPos += 15;
 
     for(Arma* arma : jugador->getArmas()) {
         painter.drawText(20, yPos, QString("- %1").arg(arma->getNombre()));
-        yPos += 15;
+        yPos += 12; // Menos espacio entre líneas
     }
 
-    painter.drawText(10, 560, "Controles: WASD - Movimiento");
-    painter.drawText(10, 580, "P - Pausa, R - Reanudar");
+    // Controles - posición ajustada
+    painter.drawText(10, 700, "Controles: WASD - Movimiento"); // Más arriba
+    painter.drawText(10, 715, "P - Pausa, R - Reanudar");
 
     if(jugador->tieneMejoraPendiente()) {
         painter.setPen(Qt::yellow);
-        painter.drawText(300, 30, "¡ARMA NUEVA DISPONIBLE! Presiona M para elegir");
+        painter.setFont(QFont("Arial", 12, QFont::Bold)); // Más pequeño
+        painter.drawText(200, 20, "¡MEJORA DISPONIBLE! 1, 2, 3");
     }
 
     if(mostrandoMejoras) {
         painter.fillRect(rect(), QColor(0, 0, 0, 150));
         painter.setPen(Qt::yellow);
-        painter.setFont(QFont("Arial", 16, QFont::Bold));
-        painter.drawText(rect().center() - QPoint(150, 0), "ELIGE UN ARMA (1, 2, 3)");
+        painter.setFont(QFont("Arial", 14, QFont::Bold)); // Más pequeño
+        painter.drawText(rect().center() - QPoint(120, 0), "ELIGE MEJORA (1, 2, 3)");
     }
 }
 
-void Nivel1::dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicion)
+void Nivel1::dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicionRelativa)
 {
-    float vidaPorcentaje = enemigo->getVida() / (enemigo->getTipo() == 1 ? 30.0f : 60.0f);
+    float vidaPorcentaje = enemigo->getVida() / (enemigo->getTipo() == 1 ? 25.0f : 70.0f);
 
-    // Barra de vida sobre el enemigo
-    QRectF barraFondo(posicion.x() - 15, posicion.y() - 30, 30, 4);
-    QRectF barraVida(posicion.x() - 15, posicion.y() - 30, 30 * vidaPorcentaje, 4);
+    // Barra de vida sobre el enemigo (usando posición relativa)
+    QRectF barraFondo(posicionRelativa.x() - 15, posicionRelativa.y() - 30, 30, 4);
+    QRectF barraVida(posicionRelativa.x() - 15, posicionRelativa.y() - 30, 30 * vidaPorcentaje, 4);
 
     painter.setBrush(QBrush(QColor(50, 50, 50)));
     painter.setPen(Qt::NoPen);
@@ -819,9 +1001,9 @@ void Nivel1::dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const 
 
     // Color según tipo
     if(enemigo->getTipo() == 1) {
-        painter.setBrush(QBrush(QColor(255, 100, 100))); // Rojo claro para débil
+        painter.setBrush(QBrush(QColor(255, 100, 100)));
     } else {
-        painter.setBrush(QBrush(QColor(255, 50, 50)));   // Rojo oscuro para fuerte
+        painter.setBrush(QBrush(QColor(255, 50, 50)));
     }
     painter.drawRect(barraVida);
 }

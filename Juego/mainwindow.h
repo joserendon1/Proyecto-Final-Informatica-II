@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "nivel1.h"  // NUEVO
+#include "nivel1.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -34,13 +34,12 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    Nivel1 *nivel1;  // NUEVO
+    Nivel1 *nivel1;
 
     void setupMenu();
     void setupToolbar();
     void setupStatusBar();
     void connectGameSignals();
-    void centrarNivel();  // NUEVO
 };
 
 #endif // MAINWINDOW_H

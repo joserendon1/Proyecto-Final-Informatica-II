@@ -29,7 +29,7 @@ public:
     void aplicarMejoraDanio(float extra);
     void aplicarMejoraVelocidad(float extra);
     void anadirArmaNueva(Arma::Tipo tipoArma);
-    void mejorarArmaExistente(Arma::Tipo tipoArma);
+    bool tieneArma(Arma::Tipo tipo) const;
 
     // Getters
     int getNivel() const { return nivel; }
@@ -38,10 +38,10 @@ public:
     float getDanioExtra() const { return danioExtra; }
     float getVelocidadExtra() const { return velocidadExtra; }
     QList<Arma*> getArmas() const { return armas; }
-    bool tieneArma(Arma::Tipo tipo) const; // NUEVO método
+    QPointF getUltimaDireccion() const { return ultimaDireccion; }
 
 private:
-    bool teclasPresionadas[4]; // WASD
+    bool teclasPresionadas[4];
     QPointF velocidadMovimiento;
     QPointF ultimaDireccion;
     QList<Arma*> armas;
