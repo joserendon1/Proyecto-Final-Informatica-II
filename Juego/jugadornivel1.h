@@ -28,7 +28,8 @@ public:
     void aplicarMejoraVida(float extra);
     void aplicarMejoraDanio(float extra);
     void aplicarMejoraVelocidad(float extra);
-    void anadirArmaNueva(Arma::Tipo tipoArma); // NUEVO método
+    void anadirArmaNueva(Arma::Tipo tipoArma);
+    void mejorarArmaExistente(Arma::Tipo tipoArma);
 
     // Getters
     int getNivel() const { return nivel; }
@@ -42,6 +43,7 @@ public:
 private:
     bool teclasPresionadas[4]; // WASD
     QPointF velocidadMovimiento;
+    QPointF ultimaDireccion;
     QList<Arma*> armas;
     int nivel;
     int experiencia;

@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>sprites/player/Warrior_Idle.png</file>
+        <file>sprites/player/Warrior_Run.png</file>
+        <file>sprites/enemies/Lancer_Run.png</file>
+        <file>sprites/enemies/Warrior_Run.png</file>
+        <file>sprites/attacks/sword.png</file>
+        <file>sprites/attacks/arrow.png</file>
+        <file>sprites/attacks/oil.png</file>
+    </qresource>
+    <qresource prefix="/map">
+        <file>maps/map1.png</file>
+    </qresource>
+</RCC>

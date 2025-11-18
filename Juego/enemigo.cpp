@@ -1,11 +1,17 @@
 #include "enemigo.h"
 #include <QtMath>
 
-Enemigo::Enemigo()
-    : tipo(1), experienciaQueDa(10)
+Enemigo::Enemigo(int tipoEnemigo) : tipo(tipoEnemigo)
 {
-    vida = 30.0f;
-    velocidad = 1.2f;  // REDUCIDO de 2.0f a 1.2f (más lento)
+    if(tipo == 1) {
+        vida = 30.0f;
+        velocidad = 1.5f;
+        experienciaQueDa = 10;
+    } else {
+        vida = 60.0f;
+        velocidad = 1.0f;
+        experienciaQueDa = 25;
+    }
     posicion = QPointF(0, 0);
 }
 
@@ -16,7 +22,6 @@ void Enemigo::actualizar(float deltaTime) {
 void Enemigo::seguirJugador(const QPointF& posicionJugador) {
     QPointF direccion = posicionJugador - posicion;
 
-    // Normalizar la dirección
     float magnitud = qSqrt(direccion.x() * direccion.x() + direccion.y() * direccion.y());
     if(magnitud > 0) {
         direccion /= magnitud;
@@ -31,5 +36,10 @@ void Enemigo::recibirDanio(float cantidad) {
 }
 
 QRectF Enemigo::getAreaColision() const {
-    return QRectF(posicion.x() - 8, posicion.y() - 8, 16, 16);
+    // Tamaño diferente según el tipo
+    if(tipo == 1) {
+        return QRectF(posicion.x() - 6, posicion.y() - 6, 12, 12); // Más pequeño
+    } else {
+        return QRectF(posicion.x() - 8, posicion.y() - 8, 16, 16); // Más grande
+    }
 }

@@ -15,8 +15,10 @@ SOURCES += \
     jugadornivel1.cpp \
     main.cpp \
     mainwindow.cpp \
+    mapa.cpp \
     mejora.cpp \
-    nivel1.cpp
+    nivel1.cpp \
+    spritemanager.cpp
 
 HEADERS += \
     arma.h \
@@ -24,8 +26,10 @@ HEADERS += \
     entidad.h \
     jugadornivel1.h \
     mainwindow.h \
+    mapa.h \
     mejora.h \
-    nivel1.h
+    nivel1.h \
+    spritemanager.h
 
 FORMS += \
     mainwindow.ui
@@ -34,3 +38,6 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    resources.qrc

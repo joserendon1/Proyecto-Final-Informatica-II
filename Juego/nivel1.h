@@ -10,11 +10,12 @@
 #include <QInputDialog>
 #include <QDebug>
 #include <QMessageBox>
-#include <QDateTime>  // AGREGADO para deltaTime
+#include <QDateTime>
 
 #include "jugadornivel1.h"
 #include "enemigo.h"
 #include "mejora.h"
+#include "mapa.h"
 
 class Nivel1 : public QWidget
 {
@@ -28,6 +29,16 @@ public:
     void pausarNivel();
     void reanudarNivel();
 
+    // NUEVO MÉTODO - Agregar esta línea
+    Mapa* getMapa() const { return mapa; }
+
+signals:
+    void gamePaused();
+    void gameResumed();
+    void playerLevelUp();
+    void gameOver();
+    void levelCompleted();
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
@@ -40,17 +51,27 @@ private slots:
 private:
     void procesarColisiones();
     void generarEnemigo();
+    void dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicion);
     void dibujarHUD(QPainter &painter);
     void dibujarArmas(QPainter &painter);
+    void dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite);
+    void dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite);
     void limpiarEnemigosMuertos();
     void mostrarOpcionesMejoras();
     void inicializarMejoras();
     QList<Mejora> generarOpcionesMejoras(int cantidad = 3);
+    QList<Mejora> opcionesMejorasActuales;
     void aplicarMejora(const Mejora& mejora);
     void resetearTeclas();
 
+    // NUEVOS MÉTODOS PARA MAPA
+    void inicializarMapa();
+    bool verificarColisionMapa(const QRectF& area) const;
+    QPointF ajustarPosicionColision(const QRectF& entidad, const QRectF& obstaculo) const;
+
     JugadorNivel1 *jugador;
     QList<Enemigo*> enemigos;
+    Mapa *mapa;
 
     QTimer *timerJuego;
     QTimer *timerOleadas;

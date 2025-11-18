@@ -3,21 +3,18 @@
 #include <QDebug>  // AGREGAR este include
 
 JugadorNivel1::JugadorNivel1() :
-    nivel(1),
-    experiencia(0),
-    mejoraPendiente(false),
-    danioExtra(0),
-    velocidadExtra(0)
+    nivel(1), experiencia(0), mejoraPendiente(false),
+    danioExtra(0), velocidadExtra(0),
+    ultimaDireccion(0, -1)
 {
     vida = 100.0f;
-    velocidad = 2.5f;
+    velocidad = 2.0f;
     posicion = QPointF(400, 300);
 
     for(int i = 0; i < 4; i++) {
         teclasPresionadas[i] = false;
     }
 
-    // SOLO UNA ARMA INICIAL - la espada
     armas.append(new Arma(Arma::ESPADA));
 }
 
@@ -31,12 +28,24 @@ JugadorNivel1::~JugadorNivel1() {
 void JugadorNivel1::actualizar(float deltaTime) {
     velocidadMovimiento = QPointF(0, 0);
 
-    if(teclasPresionadas[0]) velocidadMovimiento.setY(-1); // W
-    if(teclasPresionadas[1]) velocidadMovimiento.setX(-1); // A
-    if(teclasPresionadas[2]) velocidadMovimiento.setY(1);  // S
-    if(teclasPresionadas[3]) velocidadMovimiento.setX(1);  // D
+    // ACTUALIZAR: Cada tecla actualiza la última dirección
+    if(teclasPresionadas[0]) {
+        velocidadMovimiento.setY(-1);
+        ultimaDireccion = QPointF(0, -1); // W = Arriba
+    }
+    if(teclasPresionadas[1]) {
+        velocidadMovimiento.setX(-1);
+        ultimaDireccion = QPointF(-1, 0); // A = Izquierda
+    }
+    if(teclasPresionadas[2]) {
+        velocidadMovimiento.setY(1);
+        ultimaDireccion = QPointF(0, 1);  // S = Abajo
+    }
+    if(teclasPresionadas[3]) {
+        velocidadMovimiento.setX(1);
+        ultimaDireccion = QPointF(1, 0);  // D = Derecha
+    }
 
-    // Normalizar movimiento diagonal
     if(velocidadMovimiento.x() != 0 && velocidadMovimiento.y() != 0) {
         velocidadMovimiento /= qSqrt(2);
     }
@@ -47,9 +56,9 @@ void JugadorNivel1::actualizar(float deltaTime) {
 
     // Limitar al área de juego
     if(posicion.x() < 0) posicion.setX(0);
-    if(posicion.x() > 800) posicion.setX(800);
+    if(posicion.x() > 1300) posicion.setX(1300);
     if(posicion.y() < 0) posicion.setY(0);
-    if(posicion.y() > 600) posicion.setY(600);
+    if(posicion.y() > 730) posicion.setY(730);
 
     // Actualizar armas con deltaTime
     for(Arma* arma : armas) {
@@ -63,7 +72,7 @@ void JugadorNivel1::actualizar(float deltaTime) {
 void JugadorNivel1::activarArmas() {
     for(Arma* arma : armas) {
         if(arma->puedeAtacar()) {
-            arma->activar(posicion);
+            arma->activar(posicion, ultimaDireccion);
         }
     }
 }
@@ -107,9 +116,8 @@ void JugadorNivel1::subirNivel() {
     qDebug() << "¡Subiste al nivel" << nivel << "! Elige una mejora.";
 }
 
-// IMPLEMENTACIÓN del método (quitada del .h)
 int JugadorNivel1::getExperienciaParaSiguienteNivel() const {
-    return nivel * 150; // AUMENTADO de 100 a 150 (más difícil subir)
+    return nivel * 200;
 }
 
 QRectF JugadorNivel1::getAreaColision() const {
@@ -117,22 +125,22 @@ QRectF JugadorNivel1::getAreaColision() const {
 }
 
 void JugadorNivel1::anadirArmaNueva(Arma::Tipo tipoArma) {
-    // Verificar si ya tiene el arma
     if (tieneArma(tipoArma)) {
-        qDebug() << "Ya tienes esta arma!";
+        qDebug() << "Ya tienes esta arma! Mejorando la existente...";
+        for (Arma* arma : armas) {
+            if (arma->getTipo() == tipoArma) {
+                arma->subirNivel();
+                qDebug() << "¡" << arma->getNombre() << " mejorada a nivel" << arma->getNivel() << "!";
+                break;
+            }
+        }
         return;
     }
 
-    // Crear y agregar la nueva arma
     Arma* nuevaArma = new Arma(tipoArma);
     armas.append(nuevaArma);
 
-    // Aplicar daño extra si ya hay mejoras de daño
-    if (danioExtra > 0) {
-        nuevaArma->setDanio(nuevaArma->getDanio() + danioExtra);
-    }
-
-    qDebug() << "¡Nueva arma añadida:" << tipoArma << "!";
+    qDebug() << "¡Nueva arma añadida:" << nuevaArma->getNombre() << "!";
 }
 
 bool JugadorNivel1::tieneArma(Arma::Tipo tipo) const {

@@ -8,6 +8,7 @@ class Enemigo : public Entidad
 {
 public:
     Enemigo();
+    Enemigo(int tipoEnemigo);
 
     void actualizar(float deltaTime) override;
     QRectF getAreaColision() const override;
@@ -20,7 +21,7 @@ public:
     int getExperienciaQueDa() const { return experienciaQueDa; }
 
 private:
-    int tipo; // 1: básico, 2: fuerte, etc.
+    int tipo; // 1: débil, 2: fuerte
     int experienciaQueDa;
 };
 
