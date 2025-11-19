@@ -17,15 +17,13 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // VENTANA 1024x768 FIJA
-    setWindowTitle("Último Bastión - Defensa Medieval");
+    setWindowTitle("Último Bastión");
 
     int anchoVentana = 1024;
     int altoVentana = 768;
 
     setFixedSize(anchoVentana, altoVentana);
 
-    // Centrar ventana en la pantalla
     QScreen *screen = QGuiApplication::primaryScreen();
     QRect screenGeometry = screen->geometry();
     int x = (screenGeometry.width() - anchoVentana) / 2;
@@ -38,14 +36,12 @@ MainWindow::MainWindow(QWidget *parent)
     setupToolbar();
     setupStatusBar();
 
-    // Crear y configurar el nivel
     nivel1 = new Nivel1(this);
     setCentralWidget(nivel1);
 
-    // Conectar señales del juego
     connectGameSignals();
 
-    qDebug() << "🖥️ Ventana configurada - 1024x768 fija";
+    qDebug() << "Ventana configurada - 1024x768 fija";
 
     statusBar()->showMessage("Juego listo - Usa WASD para moverte, P para pausar");
 }
@@ -57,7 +53,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupMenu()
 {
-    // Menú Archivo
     QMenu *fileMenu = menuBar()->addMenu("&Archivo");
 
     QAction *newGameAction = new QAction("&Nuevo Juego", this);
@@ -72,7 +67,6 @@ void MainWindow::setupMenu()
     connect(newGameAction, &QAction::triggered, this, &MainWindow::onNewGame);
     connect(exitAction, &QAction::triggered, this, &QMainWindow::close);
 
-    // Menú Juego
     QMenu *gameMenu = menuBar()->addMenu("&Juego");
 
     QAction *pauseAction = new QAction("&Pausar", this);
@@ -86,7 +80,6 @@ void MainWindow::setupMenu()
     connect(pauseAction, &QAction::triggered, this, &MainWindow::onPauseGame);
     connect(resumeAction, &QAction::triggered, this, &MainWindow::onResumeGame);
 
-    // Menú Ayuda
     QMenu *helpMenu = menuBar()->addMenu("&Ayuda");
 
     QAction *controlsAction = new QAction("&Controles", this);

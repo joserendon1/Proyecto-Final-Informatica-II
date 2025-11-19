@@ -6,15 +6,12 @@
 Arma::Arma(Tipo tipoArma) :
     tipo(tipoArma),
     tiempoCooldownRestante(0),
-    nivel(1)
+    nivel(1),
+    posicionJugador(nullptr),
+    direccionJugador(nullptr),
+    rangoDeteccion(200.0f)
 {
     switch(tipo) {
-    case ESPADA:
-        nombre = "Espada Bizantina";
-        danioBase = 18.0f;
-        cooldownBase = 1100;
-        color = QColor(255, 215, 0);
-        break;
     case BALLESTA:
         nombre = "Ballesta";
         danioBase = 14.0f;
@@ -59,66 +56,25 @@ void Arma::activar(const QPointF& posicion, const QPointF& direccion)
 
     limpiarAtaques();
 
+    QPointF direccionAtaque = direccion;
+
+    if (posicionJugador) {
+        direccionAtaque = calcularDireccionHaciaEnemigoCercano(*posicionJugador);
+    }
+
     switch(tipo) {
-    case ESPADA:
-        crearAtaqueEspada(posicion, direccion);
-        break;
     case BALLESTA:
-        crearAtaqueBallesta(posicion, direccion);
+        crearAtaqueBallesta(posicion, direccionAtaque);
         break;
     case ACEITE:
-        crearAtaqueAceite(posicion, direccion);
+        crearAtaqueAceite(posicion, direccionAtaque);
         break;
     case ARCO:
-        crearAtaqueArco(posicion, direccion);
+        crearAtaqueArco(posicion, direccionAtaque);
         break;
     }
 
     tiempoCooldownRestante = cooldown;
-}
-
-void Arma::crearAtaqueEspada(const QPointF& posicion, const QPointF& direccion)
-{
-    float longitud = 50.0f;
-    float ancho = 25.0f;
-    QPointF dirAtaque = direccion;
-
-    if(dirAtaque.isNull()) {
-        dirAtaque = QPointF(0, -1);
-    }
-
-    QRectF areaAtaque;
-    float rotacion = 0.0f;
-
-    if(qAbs(dirAtaque.x()) > qAbs(dirAtaque.y())) {
-        if(dirAtaque.x() > 0) {
-            areaAtaque = QRectF(posicion.x(), posicion.y() - ancho/2, longitud, ancho);
-            rotacion = 0.0f;
-        } else {
-            areaAtaque = QRectF(posicion.x() - longitud, posicion.y() - ancho/2, longitud, ancho);
-            rotacion = 180.0f;
-        }
-    } else {
-        if(dirAtaque.y() > 0) {
-            areaAtaque = QRectF(posicion.x() - ancho/2, posicion.y(), ancho, longitud);
-            rotacion = 90.0f;
-        } else {
-            areaAtaque = QRectF(posicion.x() - ancho/2, posicion.y() - longitud, ancho, longitud);
-            rotacion = -90.0f;
-        }
-    }
-
-    areasAtaque.append(areaAtaque);
-
-    AreaAtaqueSprite spriteAtaque;
-    spriteAtaque.area = areaAtaque;
-    spriteAtaque.tiempoVida = cooldown * 0.3f;
-    spriteAtaque.frameActual = 0;
-    spriteAtaque.spriteName = getSpriteSheetName();
-    spriteAtaque.rotacion = rotacion;
-    spriteAtaque.totalFrames = getTotalFrames();
-    spriteAtaque.tiempoDesdeUltimoFrame = 0.0f;
-    areasAtaqueSprites.append(spriteAtaque);
 }
 
 void Arma::crearAtaqueBallesta(const QPointF& posicion, const QPointF& direccion)
@@ -160,21 +116,45 @@ void Arma::crearAtaqueArco(const QPointF& posicion, const QPointF& direccion)
     if(nivel >= 4) numFlechas = 6;
     if(nivel >= 7) numFlechas = 8;
 
-    for(int i = 0; i < numFlechas; i++) {
-        float angulo = (2 * M_PI * i) / numFlechas;
-        QPointF dirFlecha(std::cos(angulo), std::sin(angulo));
+    if(!enemigosCercanos.isEmpty()) {
+        for(int i = 0; i < qMin(numFlechas, enemigosCercanos.size()); i++) {
+            if(i < enemigosCercanos.size() && enemigosCercanos[i]->estaViva()) {
+                QPointF dirFlecha = enemigosCercanos[i]->getPosicion() - posicion;
+                float magnitud = qSqrt(dirFlecha.x() * dirFlecha.x() + dirFlecha.y() * dirFlecha.y());
+                if(magnitud > 0) {
+                    dirFlecha /= magnitud;
+                }
 
-        proyectiles.append(posicion);
-        direccionesProyectiles.append(dirFlecha);
-        tiemposVidaProyectiles.append(1200.0f);
+                proyectiles.append(posicion);
+                direccionesProyectiles.append(dirFlecha);
+                tiemposVidaProyectiles.append(1200.0f);
 
-        ProyectilSprite flechaSprite;
-        flechaSprite.posicion = posicion;
-        flechaSprite.direccion = dirFlecha;
-        flechaSprite.tiempoVida = 1200.0f;
-        flechaSprite.rotacion = std::atan2(dirFlecha.y(), dirFlecha.x()) * 180 / M_PI;
-        flechaSprite.frameActual = 0;
-        proyectilesSprites.append(flechaSprite);
+                ProyectilSprite flechaSprite;
+                flechaSprite.posicion = posicion;
+                flechaSprite.direccion = dirFlecha;
+                flechaSprite.tiempoVida = 1200.0f;
+                flechaSprite.rotacion = std::atan2(dirFlecha.y(), dirFlecha.x()) * 180 / M_PI;
+                flechaSprite.frameActual = 0;
+                proyectilesSprites.append(flechaSprite);
+            }
+        }
+    } else {
+        for(int i = 0; i < numFlechas; i++) {
+            float angulo = (2 * M_PI * i) / numFlechas;
+            QPointF dirFlecha(std::cos(angulo), std::sin(angulo));
+
+            proyectiles.append(posicion);
+            direccionesProyectiles.append(dirFlecha);
+            tiemposVidaProyectiles.append(1200.0f);
+
+            ProyectilSprite flechaSprite;
+            flechaSprite.posicion = posicion;
+            flechaSprite.direccion = dirFlecha;
+            flechaSprite.tiempoVida = 1200.0f;
+            flechaSprite.rotacion = std::atan2(dirFlecha.y(), dirFlecha.x()) * 180 / M_PI;
+            flechaSprite.frameActual = 0;
+            proyectilesSprites.append(flechaSprite);
+        }
     }
 }
 
@@ -222,10 +202,10 @@ void Arma::crearAtaqueAceite(const QPointF& posicion, const QPointF& direccion)
 
         AreaAtaqueSprite aceiteSprite;
         aceiteSprite.area = areaAtaque;
-        aceiteSprite.tiempoVida = cooldown * 0.5f;
-        aceiteSprite.frameActual = QRandomGenerator::global()->bounded(9); // Frame aleatorio
+        aceiteSprite.tiempoVida = DURACION_ATAQUE_ACEITE;
+        aceiteSprite.frameActual = QRandomGenerator::global()->bounded(9);
         aceiteSprite.spriteName = getSpriteSheetName();
-        aceiteSprite.rotacion = QRandomGenerator::global()->bounded(360); // Rotación aleatoria
+        aceiteSprite.rotacion = QRandomGenerator::global()->bounded(360);
         aceiteSprite.totalFrames = getTotalFrames();
         aceiteSprite.tiempoDesdeUltimoFrame = 0.0f;
         areasAtaqueSprites.append(aceiteSprite);
@@ -247,8 +227,8 @@ void Arma::actualizar(float deltaTime)
 
     actualizarSpritesAtaque(deltaTime);
 
-    if(tipo == ESPADA || tipo == ACEITE) {
-        if(tiempoCooldownRestante < cooldown * 0.15f) {
+    if(tipo == ACEITE) {
+        if(areasAtaqueSprites.isEmpty() || areasAtaqueSprites.first().tiempoVida <= 0) {
             limpiarAtaques();
         }
     }
@@ -277,21 +257,17 @@ void Arma::actualizarProyectiles(float deltaTime)
 
 void Arma::actualizarSpritesAtaque(float deltaTime)
 {
-    // Actualizar proyectiles con sprites
     for(int i = 0; i < proyectilesSprites.size(); i++) {
         proyectilesSprites[i].posicion += proyectilesSprites[i].direccion * 0.12f * deltaTime;
         proyectilesSprites[i].tiempoVida -= deltaTime;
         proyectilesSprites[i].frameActual = (proyectilesSprites[i].frameActual + 1) % 4;
     }
 
-    // Actualizar áreas de ataque con sprites (ESPADA Y ACEITE)
     for(int i = 0; i < areasAtaqueSprites.size(); i++) {
         areasAtaqueSprites[i].tiempoVida -= deltaTime;
-        areasAtaqueSprites[i].tiempoDesdeUltimoFrame += deltaTime; // NUEVO
+        areasAtaqueSprites[i].tiempoDesdeUltimoFrame += deltaTime;
 
-        // Velocidad de animación controlada por tiempo
-        float tiempoPorFrame = 80.0f; // 80ms por frame (12.5 FPS para la animación)
-
+        float tiempoPorFrame = 80.0f;
         if(areasAtaqueSprites[i].tiempoDesdeUltimoFrame >= tiempoPorFrame) {
             areasAtaqueSprites[i].frameActual =
                 (areasAtaqueSprites[i].frameActual + 1) % areasAtaqueSprites[i].totalFrames;
@@ -299,7 +275,6 @@ void Arma::actualizarSpritesAtaque(float deltaTime)
         }
     }
 
-    // Limpiar sprites expirados
     for(int i = proyectilesSprites.size() - 1; i >= 0; i--) {
         if(proyectilesSprites[i].tiempoVida <= 0) {
             proyectilesSprites.removeAt(i);
@@ -337,7 +312,6 @@ void Arma::limpiarAtaques()
 QString Arma::getSpriteSheetName() const
 {
     switch(tipo) {
-    case ESPADA: return "sword_slash";
     case BALLESTA: return "projectile_arrow";
     case ARCO: return "projectile_arrow";
     case ACEITE: return "oil_effect";
@@ -348,10 +322,62 @@ QString Arma::getSpriteSheetName() const
 int Arma::getTotalFrames() const
 {
     switch(tipo) {
-    case ESPADA: return 7;
     case BALLESTA: return 1;
     case ARCO: return 1;
     case ACEITE: return 9;
     default: return 1;
     }
+}
+
+void Arma::setEnemigosCercanos(const QList<Enemigo*>& enemigos)
+{
+    enemigosCercanos.clear();
+    if (!posicionJugador) return;
+
+    float rangoActual = rangoDeteccion;
+
+    for(Enemigo* enemigo : enemigos) {
+        if(enemigo->estaViva()) {
+            QPointF distancia = enemigo->getPosicion() - *posicionJugador;
+            float magnitud = qSqrt(distancia.x() * distancia.x() + distancia.y() * distancia.y());
+            if(magnitud <= rangoActual) {
+                enemigosCercanos.append(enemigo);
+            }
+        }
+    }
+}
+
+QPointF Arma::calcularDireccionHaciaEnemigoCercano(const QPointF& posicionJugador)
+{
+    if(enemigosCercanos.isEmpty()) {
+        return QPointF(0, -1);
+    }
+
+    Enemigo* enemigoMasCercano = nullptr;
+    float distanciaMasCercana = std::numeric_limits<float>::max();
+
+    for(Enemigo* enemigo : enemigosCercanos) {
+        if(enemigo->estaViva()) {
+            QPointF distancia = enemigo->getPosicion() - posicionJugador;
+            float magnitud = qSqrt(distancia.x() * distancia.x() + distancia.y() * distancia.y());
+
+            if(magnitud < distanciaMasCercana) {
+                distanciaMasCercana = magnitud;
+                enemigoMasCercano = enemigo;
+            }
+        }
+    }
+
+    if(!enemigoMasCercano) {
+        return QPointF(0, -1);
+    }
+
+    QPointF direccion = enemigoMasCercano->getPosicion() - posicionJugador;
+    float magnitud = qSqrt(direccion.x() * direccion.x() + direccion.y() * direccion.y());
+
+    if(magnitud > 0) {
+        direccion /= magnitud;
+    }
+
+    return direccion;
 }

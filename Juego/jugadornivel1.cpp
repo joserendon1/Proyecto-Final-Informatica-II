@@ -15,7 +15,11 @@ JugadorNivel1::JugadorNivel1() :
         teclasPresionadas[i] = false;
     }
 
-    armas.append(new Arma(Arma::ESPADA));
+    armas.append(new Arma(Arma::BALLESTA));
+
+    for(Arma* arma : armas) {
+        arma->setReferenciasJugador(&posicion, &ultimaDireccion);
+    }
 }
 
 JugadorNivel1::~JugadorNivel1() {
@@ -28,7 +32,6 @@ JugadorNivel1::~JugadorNivel1() {
 void JugadorNivel1::actualizar(float deltaTime) {
     velocidadMovimiento = QPointF(0, 0);
 
-    // ACTUALIZAR: Cada tecla actualiza la última dirección
     if(teclasPresionadas[0]) {
         velocidadMovimiento.setY(-1);
         ultimaDireccion = QPointF(0, -1);
@@ -54,7 +57,6 @@ void JugadorNivel1::actualizar(float deltaTime) {
         mover(velocidadMovimiento);
     }
 
-    // *** COMENTAR ESTOS LÍMITES ANTIGUOS - AHORA SE MANEJAN EN NIVEL1 ***
     /*
     // Limitar al área de juego
     if(posicion.x() < 0) posicion.setX(0);
@@ -63,12 +65,10 @@ void JugadorNivel1::actualizar(float deltaTime) {
     if(posicion.y() > 730) posicion.setY(730);
     */
 
-    // Actualizar armas con deltaTime
     for(Arma* arma : armas) {
         arma->actualizar(deltaTime);
     }
 
-    // Activar armas si pueden atacar
     activarArmas();
 }
 
@@ -177,6 +177,7 @@ void JugadorNivel1::anadirArmaNueva(Arma::Tipo tipoArma) {
     }
 
     Arma* nuevaArma = new Arma(tipoArma);
+    nuevaArma->setReferenciasJugador(&posicion, &ultimaDireccion);
     armas.append(nuevaArma);
 
     qDebug() << "¡Nueva arma añadida:" << nuevaArma->getNombre() << "!";

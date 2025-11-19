@@ -7,7 +7,6 @@
 #include <QPainter>
 #include <QList>
 #include <QRandomGenerator>
-#include <QInputDialog>
 #include <QDebug>
 #include <QMessageBox>
 #include <QDateTime>
@@ -47,18 +46,18 @@ private slots:
     void generarOleada();
 
 private:
-    // *** MÉTODOS DE COLISIONES Y MAPA PRIMERO ***
+    // MÉTODOS DE COLISIONES Y MAPA
     bool verificarColisionMapa(const QRectF& area) const;
     void inicializarMapaGrande();
+    void verificarYCorregirLimitesMapa(Entidad* entidad);
 
-    // *** MÉTODOS DE CÁMARA ***
+    // MÉTODOS DE CÁMARA
     void actualizarCamara();
-    QPointF calcularPosicionCamara() const;
     QRectF getVistaCamara() const;
     bool estaEnVista(const QPointF& posicion) const;
     bool estaEnVista(const QRectF& area) const;
 
-    // *** MÉTODOS DEL JUEGO ***
+    // MÉTODOS DEL JUEGO
     void procesarColisiones();
     void generarEnemigo();
     void dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicion);
@@ -66,6 +65,9 @@ private:
     void dibujarArmas(QPainter &painter);
     void dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa);
     void dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa);
+    void dibujarEntidadConSprite(QPainter &painter, const QPointF &posicionRelativa,
+                                 const QString &spriteName, const QSize &displaySize,
+                                 int frameWidth, int frameHeight, int currentFrame);
     void limpiarEnemigosMuertos();
     void mostrarOpcionesMejoras();
     void inicializarMejoras();
@@ -73,7 +75,7 @@ private:
     void aplicarMejora(const Mejora& mejora);
     void resetearTeclas();
 
-    // *** VARIABLES MIEMBRO ***
+    // VARIABLES MIEMBRO
     JugadorNivel1 *jugador;
     QList<Enemigo*> enemigos;
     Mapa *mapa;
@@ -99,7 +101,6 @@ private:
 
     // Variables de cámara
     QPointF posicionCamara;
-    float suavizadoCamara;
     QSize tamanoVista;
 
     // Límites de spawn

@@ -4,15 +4,13 @@
 Enemigo::Enemigo(int tipoEnemigo) : tipo(tipoEnemigo)
 {
     if(tipo == 1) {
-        // ENEMIGO DÉBIL - MÁS DÉBIL PERO MÁS NUMEROSO
-        vida = 25.0f;  // REDUCIDO de 30
-        velocidad = 1.8f; // AUMENTADO de 1.5
-        experienciaQueDa = 15; // AUMENTADO de 10
+        vida = 25.0f;
+        velocidad = 1.8f;
+        experienciaQueDa = 15;
     } else {
-        // ENEMIGO FUERTE - MÁS PELIGROSO
-        vida = 70.0f;  // AUMENTADO de 60
-        velocidad = 1.1f; // AUMENTADO ligeramente de 1.0
-        experienciaQueDa = 35; // AUMENTADO de 25
+        vida = 70.0f;
+        velocidad = 1.1f;
+        experienciaQueDa = 35;
     }
     posicion = QPointF(0, 0);
 }
@@ -20,7 +18,6 @@ Enemigo::Enemigo(int tipoEnemigo) : tipo(tipoEnemigo)
 void Enemigo::actualizar(float deltaTime)
 {
     Q_UNUSED(deltaTime);
-    // Lógica específica de enemigo puede ir aquí
 }
 
 void Enemigo::seguirJugador(const QPointF& posicionJugador)

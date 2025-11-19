@@ -6,13 +6,14 @@
 #include <QRectF>
 #include <QPointF>
 #include <QColor>
+#include <enemigo.h>
 
 class Arma : public QObject
 {
     Q_OBJECT
 
 public:
-    enum Tipo { ESPADA, BALLESTA, ACEITE, ARCO };
+    enum Tipo { BALLESTA, ACEITE, ARCO };
 
     Arma(Tipo tipo);
     ~Arma();
@@ -27,6 +28,9 @@ public:
     void setDanio(float nuevoDanio) { danio = nuevoDanio; }
     int getCooldown() const { return cooldown; }
     void setCooldown(int nuevoCooldown) { cooldown = nuevoCooldown; }
+    void setReferenciasJugador(QPointF* pos, QPointF* dir) {posicionJugador = pos; direccionJugador = dir;}
+    void setEnemigosCercanos(const QList<Enemigo*>& enemigos);
+    QPointF calcularDireccionHaciaEnemigoCercano(const QPointF& posicionJugador);
 
     QColor getColor() const { return color; }
     QString getNombre() const;
@@ -52,12 +56,14 @@ public:
         float tiempoDesdeUltimoFrame;
     };
 
+
     QList<ProyectilSprite> getProyectilesSprites() const { return proyectilesSprites; }
     QList<AreaAtaqueSprite> getAreasAtaqueSprites() const { return areasAtaqueSprites; }
     QString getSpriteSheetName() const;
     int getTotalFrames() const;
 
 private:
+    static constexpr float DURACION_ATAQUE_ACEITE = 1400.0f;
     void crearAtaqueEspada(const QPointF& posicion, const QPointF& direccion);
     void crearAtaqueBallesta(const QPointF& posicion, const QPointF& direccion);
     void crearAtaqueArco(const QPointF& posicion, const QPointF& direccion);
@@ -86,6 +92,12 @@ private:
     //VARIABLES PARA SPRITES
     QList<ProyectilSprite> proyectilesSprites;
     QList<AreaAtaqueSprite> areasAtaqueSprites;
+
+    QPointF* posicionJugador;
+    QPointF* direccionJugador;
+
+    QList<Enemigo*> enemigosCercanos;
+    float rangoDeteccion;
 };
 
 #endif // ARMA_H
