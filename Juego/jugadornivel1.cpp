@@ -103,7 +103,8 @@ void JugadorNivel1::aplicarMejoraVelocidad(float extra) {
     setVelocidad(2.5f + velocidadExtra); // Base 2.5 + extra
 }
 
-void JugadorNivel1::ganarExperiencia(int exp) {
+void JugadorNivel1::ganarExperiencia(int exp)
+{
     int expBase = exp;
 
     if(nivel > 5) {
@@ -112,15 +113,18 @@ void JugadorNivel1::ganarExperiencia(int exp) {
 
     experiencia += expBase;
 
-    qDebug() << "📈 +" << expBase << "EXP - Total:" << experiencia
-             << "/" << getExperienciaParaSiguienteNivel();
+    if(expBase >= 25 || nivel % 2 == 0) {
+        qDebug() << "📈 +" << expBase << "EXP - Total:" << experiencia
+                 << "/" << getExperienciaParaSiguienteNivel();
+    }
 
     if(experiencia >= getExperienciaParaSiguienteNivel()) {
         subirNivel();
     }
 }
 
-void JugadorNivel1::subirNivel() {
+void JugadorNivel1::subirNivel()
+{
     nivel++;
     experiencia = 0;
 
@@ -128,12 +132,10 @@ void JugadorNivel1::subirNivel() {
 
     if(nivel % 3 == 0) {
         velocidad += 0.1f;
-        qDebug() << "⚡ Bonus de velocidad por nivel múltiplo de 3!";
     }
 
     if(nivel % 5 == 0) {
         aplicarMejoraDanio(2.0f);
-        qDebug() << "💥 Bonus de daño por nivel múltiplo de 5!";
     }
 
     mejoraPendiente = true;

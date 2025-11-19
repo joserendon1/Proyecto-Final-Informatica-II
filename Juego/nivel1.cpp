@@ -242,15 +242,12 @@ void Nivel1::actualizarCamara()
 {
     if(!jugador) return;
 
-    // Calcular posición objetivo de la cámara (centrada en el jugador)
     QPointF objetivo = jugador->getPosicion() - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
 
-    // Aplicar suavizado (Lerp) - más suave
     float factorSuavizado = 0.1f;
     QPointF camaraAnterior = posicionCamara;
     posicionCamara = posicionCamara + (objetivo - posicionCamara) * factorSuavizado;
 
-    // Limitar cámara a los bordes del mapa
     QRectF limitesMapa = mapa->getLimitesMapa();
 
     bool limitada = false;
@@ -271,13 +268,12 @@ void Nivel1::actualizarCamara()
         limitada = true;
     }
 
-    // *** NUEVO: DEBUG SOLO SI HAY CAMBIO SIGNIFICATIVO ***
     static int debugCounter = 0;
     debugCounter++;
-    if(debugCounter % 30 == 0 || (camaraAnterior - posicionCamara).manhattanLength() > 50) {
+    if(debugCounter % 120 == 0) {
         qDebug() << "🎥 Cámara - Jugador:" << jugador->getPosicion()
-            << "Objetivo:" << objetivo << "Actual:" << posicionCamara
-            << "Limitada:" << limitada;
+                 << "Actual:" << posicionCamara
+                 << "Limitada:" << limitada;
     }
 }
 
@@ -314,15 +310,18 @@ void Nivel1::actualizarJuego()
         return;
     }
 
-    // Actualizar tiempo del juego
+    // Actualizar tiempo del juego - DEBUG REDUCIDO
     static float acumuladorTiempo = 0;
     acumuladorTiempo += deltaTime;
     if(acumuladorTiempo >= 1000) {
         tiempoTranscurrido++;
         acumuladorTiempo = 0;
 
-        qDebug() << "⏰ Tiempo:" << tiempoTranscurrido << "/" << tiempoObjetivo
-                 << "Oleada:" << numeroOleada << "Enemigos:" << enemigos.size();
+        // SOLO mostrar tiempo cada 10 segundos
+        if(tiempoTranscurrido % 10 == 0) {
+            qDebug() << "⏰ Tiempo:" << tiempoTranscurrido << "/" << tiempoObjetivo
+                     << "Oleada:" << numeroOleada << "Enemigos:" << enemigos.size();
+        }
     }
 
     // *** NUEVO: GUARDAR POSICIÓN ANTERIOR PARA COLISIONES ***
@@ -332,15 +331,15 @@ void Nivel1::actualizarJuego()
     jugador->procesarInput(teclas);
     jugador->actualizar(deltaTime);
 
-    // *** NUEVO: VERIFICAR COLISIONES CON MAPA PRIMERO ***
+    // *** VERIFICAR COLISIONES CON MAPA PRIMERO ***
     QRectF areaJugador = jugador->getAreaColision();
     if(!verificarColisionMapa(areaJugador)) {
         // Hay colisión, revertir movimiento
         jugador->setPosicion(posicionAnterior);
-        qDebug() << "🚫 Colisión con mapa - Revertir movimiento";
+        // ELIMINADO: Debug de colisión constante
     }
 
-    // *** NUEVO: SOLO LIMITAR SI REALMENTE SE SALIÓ DEL MAPA ***
+    // *** SOLO LIMITAR SI REALMENTE SE SALIÓ DEL MAPA ***
     QRectF limitesMapa = mapa->getLimitesMapa();
     QPointF posActual = jugador->getPosicion();
     QRectF areaActual = jugador->getAreaColision();
@@ -367,10 +366,10 @@ void Nivel1::actualizarJuego()
 
     if(necesitaAjuste) {
         jugador->setPosicion(nuevaPosicion);
-        qDebug() << "📏 Ajuste de límites del mapa aplicado";
+        // ELIMINADO: Debug de ajuste constante
     }
 
-    // *** NUEVO: ACTUALIZAR CÁMARA DESPUÉS DE TODOS LOS AJUSTES ***
+    // *** ACTUALIZAR CÁMARA DESPUÉS DE TODOS LOS AJUSTES ***
     actualizarCamara();
 
     // Actualizar enemigos
@@ -485,7 +484,6 @@ void Nivel1::generarOleada()
 
 void Nivel1::generarEnemigo()
 {
-    // SISTEMA DE TIPOS DE ENEMIGOS MEJORADO
     int tipoEnemigo;
     int probabilidadFuerte = qMin(15 + (numeroOleada - 1) * 8, 75);
 
@@ -495,14 +493,11 @@ void Nivel1::generarEnemigo()
         tipoEnemigo = 1; // Débil
     }
 
-    // Crear enemigo con el tipo específico
     Enemigo *enemigo = new Enemigo(tipoEnemigo);
 
-    // SPAWN EN BORDES DEL MAPA, FUERA DE VISTA
     QRectF limitesMapa = mapa->getLimitesMapa();
     QRectF vistaActual = getVistaCamara();
 
-    // Área donde NO spawnear (vista actual + margen interior)
     QRectF areaNoSpawn = vistaActual.adjusted(-margenSpawnInterior, -margenSpawnInterior,
                                               margenSpawnInterior, margenSpawnInterior);
 
@@ -511,22 +506,21 @@ void Nivel1::generarEnemigo()
     const int MAX_INTENTOS = 20;
 
     do {
-        // Elegir un borde aleatorio del mapa
         int borde = QRandomGenerator::global()->bounded(4);
         switch(borde) {
-        case 0: // Arriba
+        case 0:
             posicion = QPointF(limitesMapa.left() + QRandomGenerator::global()->bounded(limitesMapa.width()),
                                limitesMapa.top() - margenSpawnExterior);
             break;
-        case 1: // Derecha
+        case 1:
             posicion = QPointF(limitesMapa.right() + margenSpawnExterior,
                                limitesMapa.top() + QRandomGenerator::global()->bounded(limitesMapa.height()));
             break;
-        case 2: // Abajo
+        case 2:
             posicion = QPointF(limitesMapa.left() + QRandomGenerator::global()->bounded(limitesMapa.width()),
                                limitesMapa.bottom() + margenSpawnExterior);
             break;
-        case 3: // Izquierda
+        case 3:
             posicion = QPointF(limitesMapa.left() - margenSpawnExterior,
                                limitesMapa.top() + QRandomGenerator::global()->bounded(limitesMapa.height()));
             break;
@@ -537,12 +531,12 @@ void Nivel1::generarEnemigo()
     enemigo->setPosicion(posicion);
     enemigos.append(enemigo);
 
-    // *** NUEVO: MÁS INFORMACIÓN EN DEBUG ***
     static int enemigoCounter = 0;
     enemigoCounter++;
-    qDebug() << "👹 ENEMIGO #" << enemigoCounter << "- Tipo:" << tipoEnemigo
-             << "Pos:" << posicion << "En vista:" << estaEnVista(posicion)
-             << "Total enemigos:" << enemigos.size();
+    if(enemigoCounter % 5 == 0) {
+        qDebug() << "👹 Generados" << enemigoCounter << "enemigos - Tipo:" << tipoEnemigo
+                 << "Total activos:" << enemigos.size();
+    }
 }
 
 void Nivel1::procesarColisiones()
@@ -649,17 +643,14 @@ void Nivel1::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // VISTA DE CÁMARA
     QRectF vistaCamara = getVistaCamara();
 
     static int paintCounter = 0;
     paintCounter++;
-    if(paintCounter % 60 == 0) {
+    if(paintCounter % 300 == 0) {
         qDebug() << "🎨 Paint #" << paintCounter << "- Vista cámara:" << vistaCamara;
         qDebug() << "   Jugador pos:" << jugador->getPosicion();
         qDebug() << "   Enemigos totales:" << enemigos.size();
-        qDebug() << "   Enemigos en vista:" << std::count_if(enemigos.begin(), enemigos.end(),
-                                                             [this](Enemigo* e) { return e->estaViva() && estaEnVista(e->getPosicion()); });
     }
 
     // *** NUEVO: DIBUJAR FONDO DE EMERGENCIA SI EL MAPA FALLA ***
