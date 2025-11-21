@@ -27,9 +27,8 @@ void Enemigo::seguirJugador(const QPointF& posicionJugador)
 
     if(magnitud > 0) {
         direccion /= magnitud;
+        mover(direccion);
     }
-
-    mover(direccion);
 }
 
 void Enemigo::recibirDanio(float cantidad)

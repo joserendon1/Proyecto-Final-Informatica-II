@@ -9,6 +9,13 @@
         <file>sprites/attacks/oil.png</file>
     </qresource>
     <qresource prefix="/map">
-        <file>maps/map1.png</file>
+        <file>maps/Archery.png</file>
+        <file>maps/Barracks.png</file>
+        <file>maps/Bushe.png</file>
+        <file>maps/ground.png</file>
+        <file>maps/House.png</file>
+        <file>maps/Rock.png</file>
+        <file>maps/Tower.png</file>
+        <file>maps/Tree.png</file>
     </qresource>
 </RCC>

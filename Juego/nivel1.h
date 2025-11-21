@@ -44,6 +44,7 @@ protected:
 private slots:
     void actualizarJuego();
     void generarOleada();
+    void onMejoraSeleccionada();
 
 private:
     // MÉTODOS DE COLISIONES Y MAPA
@@ -63,12 +64,12 @@ private:
     void dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicion);
     void dibujarHUD(QPainter &painter);
     void dibujarArmas(QPainter &painter);
-    void dibujarAtaqueEspada(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa);
     void dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa);
     void dibujarEntidadConSprite(QPainter &painter, const QPointF &posicionRelativa,
                                  const QString &spriteName, const QSize &displaySize,
                                  int frameWidth, int frameHeight, int currentFrame);
     void limpiarEnemigosMuertos();
+
     void mostrarOpcionesMejoras();
     void inicializarMejoras();
     QList<Mejora> generarOpcionesMejoras(int cantidad = 3);
@@ -96,6 +97,10 @@ private:
     bool mostrandoMejoras;
     QList<Mejora> todasLasMejoras;
     QList<Mejora> opcionesMejorasActuales;
+    int opcionSeleccionada;
+
+    void dibujarMenuMejoras(QPainter &painter);
+    void procesarSeleccionMejora(int opcion);
 
     qint64 tiempoUltimoFrame;
 

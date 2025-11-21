@@ -1,11 +1,13 @@
 #include "nivel1.h"
 #include "spritemanager.h"
+#include <QTimer>
 #include <QPainter>
 #include <QDebug>
 #include <QtMath>
 #include <QMessageBox>
 #include <QApplication>
 #include <algorithm>
+#include <QRandomGenerator>
 
 Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
 {
@@ -48,6 +50,7 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
     frecuenciaGeneracion = 3500;
 
     mostrandoMejoras = false;
+    opcionSeleccionada = 0;
     opcionesMejorasActuales = QList<Mejora>();
 
     inicializarMejoras();
@@ -72,12 +75,16 @@ void Nivel1::iniciarNivel()
 void Nivel1::inicializarMapaGrande()
 {
     QSize tamanoMapa(1024 * 5, 768 * 5);
-
     qDebug() << "🗺️ Creando mapa 5120x3840 (5x 1024x768)";
 
     mapa->crearMapaGrande(tamanoMapa);
 
-    qDebug() << "✅ MAPA 5x LISTO - Área enorme para explorar!";
+    QPointF posInicial = mapa->getPosicionInicioJugador();
+    QRectF areaJugador = QRectF(posInicial.x() - 10, posInicial.y() - 10, 20, 20);
+    bool esValida = verificarColisionMapa(areaJugador);
+
+    qDebug() << "Posición inicial verificada:" << posInicial << "- Válida:" << esValida;
+    qDebug() << "MAPA 5x LISTO - Área enorme para explorar!";
 }
 
 void Nivel1::resetearTeclas() {
@@ -142,7 +149,10 @@ QList<Mejora> Nivel1::generarOpcionesMejoras(int cantidad)
         }
     }
 
-    std::random_shuffle(armasNuevas.begin(), armasNuevas.end());
+    for (int i = 0; i < armasNuevas.size(); ++i) {
+        int j = QRandomGenerator::global()->bounded(armasNuevas.size());
+        armasNuevas.swapItemsAt(i, j);
+    }
 
     int numOpciones = qMin(cantidad, armasNuevas.size());
     for(int i = 0; i < numOpciones; ++i) {
@@ -155,34 +165,20 @@ QList<Mejora> Nivel1::generarOpcionesMejoras(int cantidad)
 void Nivel1::aplicarMejora(const Mejora& mejora)
 {
     qDebug() << "Aplicando mejora:" << mejora.getNombre();
-
     mejora.aplicar(jugador);
 
-    QString mensaje = QString("¡%1 obtenido!\n%2")
-                          .arg(mejora.getNombre())
-                          .arg(mejora.getDescripcion());
-
-    QMessageBox::information(this, "¡Mejora Aplicada!", mensaje);
 }
 
 void Nivel1::mostrarOpcionesMejoras()
 {
     mostrandoMejoras = true;
+    opcionSeleccionada = 0;
     resetearTeclas();
     pausarNivel();
 
     opcionesMejorasActuales = generarOpcionesMejoras(3);
-    QString mensaje = "¡Subiste de nivel!\nElige un arma:\n\n";
-    for(int i = 0; i < opcionesMejorasActuales.size(); ++i) {
-        const Mejora& mejora = opcionesMejorasActuales[i];
-        mensaje += QString("%1. 🎯 %2\n   %3\n")
-                       .arg(i + 1)
-                       .arg(mejora.getNombre())
-                       .arg(mejora.getDescripcion());
-    }
-    mensaje += "\nPresiona 1, 2 o 3 para elegir";
 
-    QMessageBox::information(this, "¡Nueva Arma Disponible!", mensaje);
+    qDebug() << "🎯 Menú de mejoras activado - Opciones:" << opcionesMejorasActuales.size();
 }
 
 void Nivel1::actualizarCamara()
@@ -191,7 +187,7 @@ void Nivel1::actualizarCamara()
 
     QPointF objetivo = jugador->getPosicion() - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
 
-    posicionCamara += (objetivo - posicionCamara) * 0.1f;
+    posicionCamara += (objetivo - posicionCamara) * 0.05f;
 
     QRectF limitesMapa = mapa->getLimitesMapa();
 
@@ -201,8 +197,10 @@ void Nivel1::actualizarCamara()
                                                      limitesMapa.bottom() - tamanoVista.height())));
 
     static int debugCounter = 0;
-    if(++debugCounter % 120 == 0) {
-        qDebug() << "🎥 Cámara - Pos:" << posicionCamara;
+    if(++debugCounter % 60 == 0) {
+        qDebug() << " Cámara - Pos:" << posicionCamara
+                 << "Jugador:" << jugador->getPosicion()
+                 << "Vista:" << getVistaCamara();
     }
 }
 
@@ -263,20 +261,31 @@ void Nivel1::actualizarJuego()
     actualizarCamara();
 
     for(Enemigo *enemigo : enemigos) {
-        QPointF posicionAnteriorEnemigo = enemigo->getPosicion();
-        enemigo->seguirJugador(jugador->getPosicion());
-        enemigo->actualizar(deltaTime);
+        if(enemigo->estaViva()) {
+            QPointF posicionAnteriorEnemigo = enemigo->getPosicion();
 
-        QRectF areaEnemigo = enemigo->getAreaColision();
-        if(!verificarColisionMapa(areaEnemigo)) {
-            enemigo->setPosicion(posicionAnteriorEnemigo);
+            float distanciaAlJugador = QLineF(enemigo->getPosicion(), jugador->getPosicion()).length();
+            if(distanciaAlJugador < 2000.0f) {
+                enemigo->seguirJugador(jugador->getPosicion());
+            }
+
+            enemigo->actualizar(deltaTime);
+
+            QRectF areaEnemigo = enemigo->getAreaColision();
+            if(!verificarColisionMapa(areaEnemigo)) {
+                enemigo->setPosicion(posicionAnteriorEnemigo);
+            }
+
+            verificarYCorregirLimitesMapa(enemigo);
         }
-
-        verificarYCorregirLimitesMapa(enemigo);
     }
 
     procesarColisiones();
     limpiarEnemigosMuertos();
+
+    if(mapa) {
+        mapa->actualizarAnimaciones(deltaTime);
+    }
 
     if(jugador->tieneMejoraPendiente() && !mostrandoMejoras) {
         mostrarOpcionesMejoras();
@@ -336,22 +345,18 @@ bool Nivel1::verificarColisionMapa(const QRectF& area) const
 {
     if(!mapa) return true;
 
-    // Verificar cada esquina y centro del área
-    QPointF puntos[] = {
-        area.topLeft(),
-        area.topRight(),
-        area.bottomLeft(),
-        area.bottomRight(),
-        area.center()
-    };
+    float stepX = area.width() / 4;
+    float stepY = area.height() / 4;
 
-    for(const QPointF& punto : puntos) {
-        if(!mapa->esTransitable(punto.x(), punto.y())) {
-            return false; // Hay colisión
+    for(float x = area.left(); x <= area.right(); x += stepX) {
+        for(float y = area.top(); y <= area.bottom(); y += stepY) {
+            if(!mapa->esTransitable(x, y)) {
+                return false;
+            }
         }
     }
 
-    return true; // No hay colisión
+    return true;
 }
 
 void Nivel1::generarOleada()
@@ -393,44 +398,78 @@ void Nivel1::generarEnemigo()
     QRectF limitesMapa = mapa->getLimitesMapa();
     QRectF vistaActual = getVistaCamara();
 
-    QRectF areaNoSpawn = vistaActual.adjusted(-margenSpawnInterior, -margenSpawnInterior,
-                                              margenSpawnInterior, margenSpawnInterior);
+    float margenSpawnCercano = 50.0f;
+    float margenSpawnLejano = 200.0f;
+
+    QRectF areaNoSpawn = vistaActual.adjusted(-margenSpawnCercano, -margenSpawnCercano,
+                                              margenSpawnCercano, margenSpawnCercano);
 
     QPointF posicion;
     int intentos = 0;
-    const int MAX_INTENTOS = 20;
+    const int MAX_INTENTOS = 30;
 
     do {
+        bool spawnCercano = QRandomGenerator::global()->bounded(100) < 80;
+        float margenUsar = spawnCercano ? margenSpawnCercano : margenSpawnLejano;
+
         int borde = QRandomGenerator::global()->bounded(4);
         switch(borde) {
         case 0:
-            posicion = QPointF(limitesMapa.left() + QRandomGenerator::global()->bounded(limitesMapa.width()),
-                               limitesMapa.top() - margenSpawnExterior);
+            posicion = QPointF(
+                vistaActual.left() + QRandomGenerator::global()->bounded(vistaActual.width()),
+                vistaActual.top() - margenUsar
+                );
             break;
         case 1:
-            posicion = QPointF(limitesMapa.right() + margenSpawnExterior,
-                               limitesMapa.top() + QRandomGenerator::global()->bounded(limitesMapa.height()));
+            posicion = QPointF(
+                vistaActual.right() + margenUsar,
+                vistaActual.top() + QRandomGenerator::global()->bounded(vistaActual.height())
+                );
             break;
         case 2:
-            posicion = QPointF(limitesMapa.left() + QRandomGenerator::global()->bounded(limitesMapa.width()),
-                               limitesMapa.bottom() + margenSpawnExterior);
+            posicion = QPointF(
+                vistaActual.left() + QRandomGenerator::global()->bounded(vistaActual.width()),
+                vistaActual.bottom() + margenUsar
+                );
             break;
         case 3:
-            posicion = QPointF(limitesMapa.left() - margenSpawnExterior,
-                               limitesMapa.top() + QRandomGenerator::global()->bounded(limitesMapa.height()));
+            posicion = QPointF(
+                vistaActual.left() - margenUsar,
+                vistaActual.top() + QRandomGenerator::global()->bounded(vistaActual.height())
+                );
             break;
         }
+
+        posicion.setX(qMax(limitesMapa.left() + 10.0f, qMin(posicion.x(), limitesMapa.right() - 10.0f)));
+        posicion.setY(qMax(limitesMapa.top() + 10.0f, qMin(posicion.y(), limitesMapa.bottom() - 10.0f)));
+
         intentos++;
-    } while (areaNoSpawn.contains(posicion) && intentos < MAX_INTENTOS);
+    } while ((areaNoSpawn.contains(posicion) || !mapa->esTransitable(posicion.x(), posicion.y())) &&
+             intentos < MAX_INTENTOS);
+
+    if (intentos >= MAX_INTENTOS) {
+        int esquina = QRandomGenerator::global()->bounded(4);
+        switch(esquina) {
+        case 0: posicion = vistaActual.topLeft() + QPointF(50, 50); break;
+        case 1: posicion = vistaActual.topRight() + QPointF(-50, 50); break;
+        case 2: posicion = vistaActual.bottomLeft() + QPointF(50, -50); break;
+        case 3: posicion = vistaActual.bottomRight() + QPointF(-50, -50); break;
+        }
+
+        posicion.setX(qMax(limitesMapa.left() + 10.0f, qMin(posicion.x(), limitesMapa.right() - 10.0f)));
+        posicion.setY(qMax(limitesMapa.top() + 10.0f, qMin(posicion.y(), limitesMapa.bottom() - 10.0f)));
+
+        qDebug() << "⚠️ Enemigo spawn en posición de emergencia:" << posicion;
+    }
 
     enemigo->setPosicion(posicion);
     enemigos.append(enemigo);
 
     static int enemigoCounter = 0;
     enemigoCounter++;
-    if(enemigoCounter % 5 == 0) {
-        qDebug() << "👹 Generados" << enemigoCounter << "enemigos - Tipo:" << tipoEnemigo
-                 << "Total activos:" << enemigos.size();
+    if(enemigoCounter % 10 == 0) {
+        qDebug() << "👹 Enemigo" << enemigoCounter << "spawn en:" << posicion
+                 << "Tipo:" << tipoEnemigo << "Vista:" << vistaActual.topLeft();
     }
 }
 
@@ -466,6 +505,23 @@ void Nivel1::procesarColisiones()
     }
 }
 
+void Nivel1::procesarSeleccionMejora(int opcion)
+{
+    if (opcion < 0 || opcion >= opcionesMejorasActuales.size()) return;
+
+    const Mejora& mejoraSeleccionada = opcionesMejorasActuales[opcion];
+
+    qDebug() << "✅ Mejora seleccionada:" << mejoraSeleccionada.getNombre();
+
+    aplicarMejora(mejoraSeleccionada);
+    jugador->setMejoraPendiente(false);
+    mostrandoMejoras = false;
+    opcionesMejorasActuales.clear();
+
+    // Pequeño delay antes de reanudar
+    QTimer::singleShot(300, this, &Nivel1::onMejoraSeleccionada);
+}
+
 void Nivel1::limpiarEnemigosMuertos()
 {
     for(int i = enemigos.size() - 1; i >= 0; i--) {
@@ -476,24 +532,46 @@ void Nivel1::limpiarEnemigosMuertos()
     }
 }
 
+void Nivel1::onMejoraSeleccionada()
+{
+    resetearTeclas();
+    reanudarNivel();
+}
+
 void Nivel1::keyPressEvent(QKeyEvent *event)
 {
-    if(mostrandoMejoras) {
-        if(event->key() >= Qt::Key_1 && event->key() <= Qt::Key_3) {
-            int indice = event->key() - Qt::Key_1;
+    if (mostrandoMejoras) {
+        switch(event->key()) {
+        case Qt::Key_A:
+        case Qt::Key_Left:
+            // Navegar izquierda
+            opcionSeleccionada = (opcionSeleccionada - 1 + opcionesMejorasActuales.size()) % opcionesMejorasActuales.size();
+            update();
+            break;
 
-            if(indice >= 0 && indice < opcionesMejorasActuales.size()) {
-                const Mejora& mejoraSeleccionada = opcionesMejorasActuales[indice];
+        case Qt::Key_D:
+        case Qt::Key_Right:
+            // Navegar derecha
+            opcionSeleccionada = (opcionSeleccionada + 1) % opcionesMejorasActuales.size();
+            update();
+            break;
 
-                aplicarMejora(mejoraSeleccionada);
-                jugador->setMejoraPendiente(false);
-                mostrandoMejoras = false;
+        case Qt::Key_Space:
+        case Qt::Key_Return:
+        case Qt::Key_Enter:
+            // Seleccionar mejora
+            procesarSeleccionMejora(opcionSeleccionada);
+            break;
 
-                opcionesMejorasActuales.clear();
-
-                resetearTeclas();
-                reanudarNivel();
-            }
+        case Qt::Key_1:
+            procesarSeleccionMejora(0);
+            break;
+        case Qt::Key_2:
+            procesarSeleccionMejora(1);
+            break;
+        case Qt::Key_3:
+            procesarSeleccionMejora(2);
+            break;
         }
         return;
     }
@@ -544,36 +622,24 @@ void Nivel1::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // VISTA DE CÁMARA
     QRectF vistaCamara = getVistaCamara();
 
-    // DEBUG MUY REDUCIDO EN DIBUJADO
-    static int paintCounter = 0;
-    paintCounter++;
-    if(paintCounter % 300 == 0) {
-        qDebug() << "🎨 Paint #" << paintCounter << "- Enemigos:" << enemigos.size();
-    }
-
-    // *** NUEVO: DIBUJAR FONDO DE EMERGENCIA SI EL MAPA FALLA ***
-    if(!mapa || mapa->getMapaCompleto().isNull()) {
-        painter.fillRect(rect(), QBrush(QColor(80, 80, 120)));
-        painter.setPen(Qt::white);
-        painter.setFont(QFont("Arial", 16));
-        painter.drawText(rect().center() - QPoint(150, 0), "MAPA NO CARGADO");
-        return;
-    }
-
     // DIBUJAR EL MAPA
-    QPixmap mapaCompleto = mapa->getMapaCompleto();
-    if(!mapaCompleto.isNull()) {
+    if(mapa && !mapa->getMapaCompleto().isNull()) {
         mapa->dibujar(painter, vistaCamara);
     } else {
-        painter.fillRect(rect(), QBrush(QColor(100, 100, 140)));
+        painter.fillRect(rect(), QBrush(QColor(80, 80, 120)));
     }
 
+    // DEBUG: Dibujar área de colisión del jugador
     QPointF playerPos = jugador->getPosicion();
     QPointF playerPosRelativa = playerPos - vistaCamara.topLeft();
+    QRectF areaColision = jugador->getAreaColision();
+    QRectF areaColisionRelativa = areaColision.translated(-vistaCamara.topLeft());
 
+    painter.setPen(QPen(Qt::red, 2));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRect(areaColisionRelativa);
     // === ANIMACIÓN DEL JUGADOR SIMPLIFICADA ===
     static int currentFrame = 0;
     static int animationCounter = 0;
@@ -622,10 +688,10 @@ void Nivel1::paintEvent(QPaintEvent *event)
     // DIBUJAR HUD MEJORADO
     dibujarHUD(painter);
 
-    // INFO DE DEBUG MEJORADA
-    painter.setPen(Qt::cyan);
-    painter.setFont(QFont("Arial", 12));
-    painter.drawText(10, 280, QString("Enemigos: %1/%2").arg(enemigosEnVista).arg(enemigos.size()));
+    // NUEVO: Dibujar menú de mejoras si está activo
+    if (mostrandoMejoras) {
+        dibujarMenuMejoras(painter);
+    }
 }
 
 void Nivel1::dibujarArmas(QPainter &painter)
@@ -753,17 +819,10 @@ void Nivel1::dibujarHUD(QPainter &painter)
     painter.drawText(10, 700, "Controles: WASD - Movimiento"); // Más arriba
     painter.drawText(10, 715, "P - Pausa, R - Reanudar");
 
-    if(jugador->tieneMejoraPendiente()) {
+    if(jugador->tieneMejoraPendiente() && !mostrandoMejoras) {
         painter.setPen(Qt::yellow);
-        painter.setFont(QFont("Arial", 12, QFont::Bold)); // Más pequeño
-        painter.drawText(200, 20, "¡MEJORA DISPONIBLE! 1, 2, 3");
-    }
-
-    if(mostrandoMejoras) {
-        painter.fillRect(rect(), QColor(0, 0, 0, 150));
-        painter.setPen(Qt::yellow);
-        painter.setFont(QFont("Arial", 14, QFont::Bold)); // Más pequeño
-        painter.drawText(rect().center() - QPoint(120, 0), "ELIGE MEJORA (1, 2, 3)");
+        painter.setFont(QFont("Arial", 12, QFont::Bold));
+        painter.drawText(rect().center().x() - 100, 30, "¡MEJORA DISPONIBLE! (Sube de nivel)");
     }
 }
 
@@ -786,4 +845,77 @@ void Nivel1::dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const 
         painter.setBrush(QBrush(QColor(255, 50, 50)));
     }
     painter.drawRect(barraVida);
+}
+
+void Nivel1::dibujarMenuMejoras(QPainter &painter)
+{
+    if (!mostrandoMejoras || opcionesMejorasActuales.isEmpty()) return;
+
+    // Fondo semitransparente
+    painter.fillRect(rect(), QColor(0, 0, 0, 180));
+
+    // Título
+    painter.setPen(Qt::yellow);
+    painter.setFont(QFont("Arial", 24, QFont::Bold));
+    painter.drawText(rect().center().x() - 150, 100, "¡NUEVA MEJORA DISPONIBLE!");
+
+    // Instrucciones
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 16));
+    painter.drawText(rect().center().x() - 120, 140, "Usa A/D para navegar, ESPACIO para seleccionar");
+
+    // Dibujar opciones
+    int startY = 200;
+    int optionHeight = 120;
+    int optionWidth = 600;
+
+    for (int i = 0; i < opcionesMejorasActuales.size(); ++i) {
+        const Mejora& mejora = opcionesMejorasActuales[i];
+
+        // Fondo de la opción
+        QRect optionRect(rect().center().x() - optionWidth/2,
+                         startY + i * optionHeight,
+                         optionWidth,
+                         optionHeight - 20);
+
+        // Color según si está seleccionada
+        if (i == opcionSeleccionada) {
+            painter.setBrush(QBrush(QColor(100, 100, 200, 200)));
+            painter.setPen(QPen(Qt::yellow, 3));
+        } else {
+            painter.setBrush(QBrush(QColor(60, 60, 100, 200)));
+            painter.setPen(QPen(Qt::white, 1));
+        }
+
+        painter.drawRoundedRect(optionRect, 15, 15);
+
+        // Texto de la mejora
+        painter.setPen(i == opcionSeleccionada ? Qt::yellow : Qt::white);
+        painter.setFont(QFont("Arial", 16, i == opcionSeleccionada ? QFont::Bold : QFont::Normal));
+
+        // Nombre
+        painter.drawText(optionRect.left() + 20, optionRect.top() + 30,
+                         QString("%1. %2").arg(i + 1).arg(mejora.getNombre()));
+
+        // Descripción
+        painter.setFont(QFont("Arial", 12));
+        painter.setPen(Qt::lightGray);
+        painter.drawText(optionRect.left() + 40, optionRect.top() + 60, mejora.getDescripcion());
+
+        // Indicador de selección
+        if (i == opcionSeleccionada) {
+            painter.setPen(QPen(Qt::yellow, 2));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawRect(optionRect.adjusted(2, 2, -2, -2));
+
+            // Flecha selección
+            painter.drawText(optionRect.left() + 10, optionRect.top() + 35, "➤");
+        }
+    }
+
+    // Información adicional
+    painter.setPen(Qt::cyan);
+    painter.setFont(QFont("Arial", 14));
+    painter.drawText(rect().center().x() - 100, startY + opcionesMejorasActuales.size() * optionHeight + 40,
+                     QString("Seleccionada: %1 - Presiona ESPACIO para confirmar").arg(opcionSeleccionada + 1));
 }
