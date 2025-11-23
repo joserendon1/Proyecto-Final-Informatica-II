@@ -2,19 +2,17 @@
 #include "audiomanager.h"
 #include <QtMath>
 #include <QDebug>
+#include <vector>
 
-JugadorNivel1::JugadorNivel1() :
-    nivel(1), experiencia(0), mejoraPendiente(false),
-    danioExtra(0), velocidadExtra(0)
+JugadorNivel1::JugadorNivel1()
 {
     vida = 100.0f;
     velocidad = 2.0f;
     posicion = QPointF(400, 300);
     ultimaDireccion = QPointF(0, -1);
 
-    for(int i = 0; i < 4; i++) {
-        teclasPresionadas[i] = false;
-    }
+    // Inicializar vector de teclas (4 elementos para WASD)
+    teclasPresionadas.resize(4, false);
 
     armas.append(new Arma(Arma::BALLESTA));
 
@@ -58,14 +56,6 @@ void JugadorNivel1::actualizar(float deltaTime) {
         mover(velocidadMovimiento);
     }
 
-    /*
-    // Limitar al área de juego
-    if(posicion.x() < 0) posicion.setX(0);
-    if(posicion.x() > 1300) posicion.setX(1300);
-    if(posicion.y() < 0) posicion.setY(0);
-    if(posicion.y() > 730) posicion.setY(730);
-    */
-
     for(Arma* arma : armas) {
         arma->actualizar(deltaTime);
     }
@@ -85,8 +75,8 @@ void JugadorNivel1::activarArmas() {
     }
 }
 
-void JugadorNivel1::procesarInput(bool teclas[]) {
-    for(int i = 0; i < 4; i++) {
+void JugadorNivel1::procesarInput(const std::vector<bool>& teclas) {
+    for(size_t i = 0; i < 4 && i < teclas.size(); i++) {
         teclasPresionadas[i] = teclas[i];
     }
 }
@@ -97,7 +87,6 @@ void JugadorNivel1::aplicarMejoraVida(float extra) {
 
 void JugadorNivel1::aplicarMejoraDanio(float extra) {
     danioExtra += extra;
-    // Aplicar el daño extra a todas las armas
     for(Arma* arma : armas) {
         arma->setDanio(arma->getDanio() + extra);
     }
@@ -105,7 +94,7 @@ void JugadorNivel1::aplicarMejoraDanio(float extra) {
 
 void JugadorNivel1::aplicarMejoraVelocidad(float extra) {
     velocidadExtra += extra;
-    setVelocidad(2.5f + velocidadExtra); // Base 2.5 + extra
+    setVelocidad(2.5f + velocidadExtra);
 }
 
 void JugadorNivel1::ganarExperiencia(int exp)

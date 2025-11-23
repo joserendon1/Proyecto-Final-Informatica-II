@@ -13,12 +13,14 @@ SOURCES += \
     audiomanager.cpp \
     enemigo.cpp \
     entidad.cpp \
+    jugadorbase.cpp \
     jugadornivel1.cpp \
     main.cpp \
     mainwindow.cpp \
     mapa.cpp \
     mejora.cpp \
     nivel1.cpp \
+    nivelbase.cpp \
     spritemanager.cpp \
     uimanager.cpp
 
@@ -27,11 +29,13 @@ HEADERS += \
     audiomanager.h \
     enemigo.h \
     entidad.h \
+    jugadorbase.h \
     jugadornivel1.h \
     mainwindow.h \
     mapa.h \
     mejora.h \
     nivel1.h \
+    nivelbase.h \
     spritemanager.h \
     uimanager.h
 

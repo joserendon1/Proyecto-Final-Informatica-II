@@ -13,3 +13,7 @@ void Entidad::recibirDanio(float cantidad) {
     vida -= cantidad;
     if(vida < 0) vida = 0;
 }
+
+QRectF Entidad::getAreaColision() const {
+    return QRectF(posicion.x() - 10, posicion.y() - 10, 20, 20);
+}

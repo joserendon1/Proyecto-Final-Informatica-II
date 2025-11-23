@@ -1,55 +1,40 @@
 #ifndef JUGADORNIVEL1_H
 #define JUGADORNIVEL1_H
 
-#include "entidad.h"
-#include "arma.h"
-#include <QPointF>
+#include "jugadorbase.h"
 #include <QList>
 
-class JugadorNivel1 : public Entidad
+class JugadorNivel1 : public JugadorBase
 {
 public:
     JugadorNivel1();
-    ~JugadorNivel1();
+    virtual ~JugadorNivel1();
 
+    // Implementación de métodos virtuales puros
     void actualizar(float deltaTime) override;
-    QRectF getAreaColision() const override;
+    void procesarInput(const std::vector<bool>& teclas) override;
+    void activarArmas() override;
 
-    void procesarInput(bool teclas[]);
-    void activarArmas();
+    // Implementación de métodos virtuales de armas
+    const QList<Arma*>& getArmas() const override { return armas; }
+    bool tieneArma(Arma::Tipo tipo) const override;
+    void anadirArmaNueva(Arma::Tipo tipoArma) override;
 
-    // Sistema de experiencia
-    void ganarExperiencia(int exp);
-    void subirNivel();
-    bool tieneMejoraPendiente() const { return mejoraPendiente; }
-    void setMejoraPendiente(bool pendiente) { mejoraPendiente = pendiente; }
-
-    // Métodos para aplicar mejoras
+    // Métodos específicos de JugadorNivel1
     void aplicarMejoraVida(float extra);
     void aplicarMejoraDanio(float extra);
     void aplicarMejoraVelocidad(float extra);
-    void anadirArmaNueva(Arma::Tipo tipoArma);
-    bool tieneArma(Arma::Tipo tipo) const;
 
-    // Getters
-    int getNivel() const { return nivel; }
-    int getExperiencia() const { return experiencia; }
-    int getExperienciaParaSiguienteNivel() const;
-    float getDanioExtra() const { return danioExtra; }
-    float getVelocidadExtra() const { return velocidadExtra; }
-    QList<Arma*> getArmas() const { return armas; }
-    QPointF getUltimaDireccion() const { return ultimaDireccion; }
+    // Override de métodos de JugadorBase
+    QRectF getAreaColision() const override;
+    void ganarExperiencia(int exp) override;
+    void subirNivel() override;
+    int getExperienciaParaSiguienteNivel() const override;
 
 private:
-    bool teclasPresionadas[4];
-    QPointF velocidadMovimiento;
-    QPointF ultimaDireccion;
     QList<Arma*> armas;
-    int nivel;
-    int experiencia;
-    bool mejoraPendiente;
-    float danioExtra;
-    float velocidadExtra;
+    float danioExtra = 0;
+    float velocidadExtra = 0;
 };
 
 #endif // JUGADORNIVEL1_H

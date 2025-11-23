@@ -10,19 +10,26 @@ public:
     Entidad();
     virtual ~Entidad() = default;
 
+    // Métodos virtuales puros para clases derivadas
     virtual void actualizar(float deltaTime) = 0;
-    virtual QRectF getAreaColision() const = 0;
 
+    // Métodos comunes con implementación base
     virtual void mover(const QPointF& direccion);
     virtual void recibirDanio(float cantidad);
 
+    // Getters y setters
     QPointF getPosicion() const { return posicion; }
-    void setPosicion(const QPointF& newPosicion) { posicion = newPosicion; }
+    void setPosicion(const QPointF& nuevaPosicion) { posicion = nuevaPosicion; }
+
     float getVida() const { return vida; }
-    void setVida(float newVida) { vida = newVida; }
-    bool estaViva() const { return vida > 0; }
+    void setVida(float nuevaVida) { vida = nuevaVida; }
+
     float getVelocidad() const { return velocidad; }
-    void setVelocidad(float newVelocidad) { velocidad = newVelocidad; }
+    void setVelocidad(float nuevaVelocidad) { velocidad = nuevaVelocidad; }
+
+    bool estaViva() const { return vida > 0; }
+
+    virtual QRectF getAreaColision() const;
 
 protected:
     QPointF posicion;

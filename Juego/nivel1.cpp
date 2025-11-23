@@ -10,14 +10,14 @@
 #include <QApplication>
 #include <algorithm>
 #include <QRandomGenerator>
+#include <QDateTime>
+#include <QKeyEvent>
 
-Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
+Nivel1::Nivel1(QWidget *parent) : NivelBase(parent)
 {
-    setFixedSize(1024, 768);
-    tamanoVista = QSize(1024, 768);
+    // La configuración base ya se hizo en NivelBase
 
     qDebug() << "Nivel1 - Vista 1024x768";
-    setFocusPolicy(Qt::StrongFocus);
 
     // PRIMERO cargar recursos
     SpriteManager::getInstance().preloadGameSprites();
@@ -32,9 +32,6 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
         qDebug() << "Música iniciada";
     }
 
-    // *** CORRECCIÓN: PRIMERO el mapa, LUEGO el jugador ***
-    mapa = new Mapa(this);
-
     // INICIALIZAR el mapa completamente
     inicializarMapaGrande();
 
@@ -46,18 +43,11 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
     jugador->setPosicion(posicionInicial);
     posicionCamara = posicionInicial - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
 
-    // Resto de la inicialización...
-    timerJuego = new QTimer(this);
+    // Timer específico para oleadas
     timerOleadas = new QTimer(this);
-    tiempoUltimoFrame = QDateTime::currentMSecsSinceEpoch();
-
-    connect(timerJuego, &QTimer::timeout, this, &Nivel1::actualizarJuego);
     connect(timerOleadas, &QTimer::timeout, this, &Nivel1::generarOleada);
 
-    for(int i = 0; i < 4; i++) {
-        teclas[i] = false;
-    }
-
+    // Inicializar estado específico del nivel 1
     tiempoTranscurrido = 0;
     tiempoObjetivo = 120;
     numeroOleada = 1;
@@ -76,16 +66,22 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
 
 Nivel1::~Nivel1()
 {
+    if (timerOleadas) {
+        timerOleadas->stop();
+        delete timerOleadas;
+    }
     qDeleteAll(enemigos);
     enemigos.clear();
-    delete jugador;
-    delete mapa;
 }
 
 void Nivel1::iniciarNivel()
 {
-    timerJuego->start(16);
-    timerOleadas->start(frecuenciaGeneracion);
+    if (timerJuego) {
+        timerJuego->start(16);
+    }
+    if (timerOleadas) {
+        timerOleadas->start(frecuenciaGeneracion);
+    }
 }
 
 void Nivel1::inicializarMapaGrande()
@@ -104,28 +100,29 @@ void Nivel1::inicializarMapaGrande()
 }
 
 void Nivel1::resetearTeclas() {
-    for(int i = 0; i < 4; i++) {
-        teclas[i] = false;
-    }
-    if(jugador) {
-        bool teclasVacias[4] = {false, false, false, false};
-        jugador->procesarInput(teclasVacias);
+    NivelBase::resetearTeclas();
+
+    JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if(jugadorN1) {
+        std::vector<bool> teclasVacias(4, false);
+        jugadorN1->procesarInput(teclasVacias);
     }
 }
 
 void Nivel1::pausarNivel()
 {
-    timerJuego->stop();
-    timerOleadas->stop();
-    resetearTeclas();
-    emit gamePaused();
+    NivelBase::pausarNivel();
+    if (timerOleadas) {
+        timerOleadas->stop();
+    }
 }
 
 void Nivel1::reanudarNivel()
 {
-    timerJuego->start(16);
-    timerOleadas->start(frecuenciaGeneracion);
-    emit gameResumed();
+    NivelBase::reanudarNivel();
+    if (timerOleadas) {
+        timerOleadas->start(frecuenciaGeneracion);
+    }
 }
 
 void Nivel1::inicializarMejoras()
@@ -146,15 +143,18 @@ QList<Mejora> Nivel1::generarOpcionesMejoras(int cantidad)
 {
     QList<Mejora> opciones;
 
+    JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if (!jugadorN1) return opciones;
+
     QList<Mejora> armasNuevas;
     for(const Mejora& mejora : todasLasMejoras) {
-        if(!jugador->tieneArma(static_cast<Arma::Tipo>(mejora.getTipoArma()))) {
+        if(!jugadorN1->tieneArma(static_cast<Arma::Tipo>(mejora.getTipoArma()))) {
             armasNuevas.append(mejora);
         }
     }
 
     if(armasNuevas.size() < cantidad) {
-        for(Arma* arma : jugador->getArmas()) {
+        for(Arma* arma : jugadorN1->getArmas()) {
             if(armasNuevas.size() >= cantidad) break;
 
             QString nombreMejora = QString("Mejorar %1").arg(arma->getNombre());
@@ -181,9 +181,11 @@ QList<Mejora> Nivel1::generarOpcionesMejoras(int cantidad)
 void Nivel1::aplicarMejora(const Mejora& mejora)
 {
     qDebug() << "Aplicando mejora:" << mejora.getNombre();
-    mejora.aplicar(jugador);
-
-    AudioManager::getInstance().playLevelUp();
+    JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if (jugadorN1) {
+        mejora.aplicar(jugadorN1);
+        AudioManager::getInstance().playLevelUp();
+    }
 }
 
 void Nivel1::mostrarOpcionesMejoras()
@@ -198,47 +200,7 @@ void Nivel1::mostrarOpcionesMejoras()
     qDebug() << "🎯 Menú de mejoras activado - Opciones:" << opcionesMejorasActuales.size();
 }
 
-void Nivel1::actualizarCamara()
-{
-    if(!jugador) return;
-
-    QPointF objetivo = jugador->getPosicion() - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
-
-    posicionCamara += (objetivo - posicionCamara) * 0.05f;
-
-    QRectF limitesMapa = mapa->getLimitesMapa();
-
-    posicionCamara.setX(qMax(limitesMapa.left(), qMin(posicionCamara.x(),
-                                                      limitesMapa.right() - tamanoVista.width())));
-    posicionCamara.setY(qMax(limitesMapa.top(), qMin(posicionCamara.y(),
-                                                     limitesMapa.bottom() - tamanoVista.height())));
-
-    static int debugCounter = 0;
-    if(++debugCounter % 60 == 0) {
-        qDebug() << " Cámara - Pos:" << posicionCamara
-                 << "Jugador:" << jugador->getPosicion()
-                 << "Vista:" << getVistaCamara();
-    }
-}
-
-QRectF Nivel1::getVistaCamara() const
-{
-    return QRectF(posicionCamara, tamanoVista);
-}
-
-bool Nivel1::estaEnVista(const QPointF& posicion) const
-{
-    QRectF vista = getVistaCamara();
-    return vista.contains(posicion);
-}
-
-bool Nivel1::estaEnVista(const QRectF& area) const
-{
-    QRectF vista = getVistaCamara();
-    return vista.intersects(area);
-}
-
-void Nivel1::actualizarJuego()
+void Nivel1::actualizarJuego(float deltaTime)
 {
     // VERIFICACIONES DE SEGURIDAD AL INICIO
     if (!jugador || !mapa) {
@@ -246,17 +208,14 @@ void Nivel1::actualizarJuego()
         return;
     }
 
-    qint64 tiempoActual = QDateTime::currentMSecsSinceEpoch();
-    float deltaTime = tiempoActual - tiempoUltimoFrame;
-    tiempoUltimoFrame = tiempoActual;
-
     if(mostrandoMejoras) {
         return;
     }
 
     // ACTUALIZAR ARMAS DEL JUGADOR
-    if (!jugador->getArmas().isEmpty()) {
-        for(Arma* arma : jugador->getArmas()) {
+    JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if (jugadorN1 && !jugadorN1->getArmas().isEmpty()) {
+        for(Arma* arma : jugadorN1->getArmas()) {
             if (arma) {
                 arma->setEnemigosCercanos(enemigos);
             }
@@ -278,11 +237,11 @@ void Nivel1::actualizarJuego()
 
     // MOVIMIENTO DEL JUGADOR
     QPointF posicionAnterior = jugador->getPosicion();
-    jugador->procesarInput(teclas);
-
-    if (jugador) {
-        jugador->actualizar(deltaTime);
+    jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if (jugadorN1) {
+        jugadorN1->procesarInput(teclas);
     }
+    jugador->actualizar(deltaTime);
 
     // VERIFICAR COLISIONES DEL JUGADOR CON EL MAPA
     QRectF areaJugador = jugador->getAreaColision();
@@ -293,7 +252,7 @@ void Nivel1::actualizarJuego()
     // MANTENER JUGADOR DENTRO DE LOS LÍMITES DEL MAPA
     verificarYCorregirLimitesMapa(jugador);
 
-    // ACTUALIZAR CÁMARA
+    // ACTUALIZAR CÁMARA (método de NivelBase)
     actualizarCamara();
 
     // SONIDO DE MOVIMIENTO MEJORADO
@@ -302,13 +261,12 @@ void Nivel1::actualizarJuego()
 
     if (isMoving && moveSoundCooldown <= 0) {
         AudioManager::getInstance().playPlayerMove();
-        moveSoundCooldown = 30; // Cooldown aumentado para no saturar
+        moveSoundCooldown = 30;
     }
 
     if (moveSoundCooldown > 0) {
         moveSoundCooldown--;
     }
-
     // ACTUALIZAR ENEMIGOS
     for(Enemigo *enemigo : enemigos) {
         if(enemigo && enemigo->estaViva()) {
@@ -352,24 +310,21 @@ void Nivel1::actualizarJuego()
 
     // VERIFICAR FIN DEL NIVEL
     if(tiempoTranscurrido >= tiempoObjetivo) {
-        timerJuego->stop();
-        timerOleadas->stop();
+        if (timerJuego) timerJuego->stop();
+        if (timerOleadas) timerOleadas->stop();
         qDebug() << "Nivel completado! Has sobrevivido" << tiempoObjetivo << "segundos";
         emit levelCompleted();
-        return; // Salir temprano para evitar updates innecesarios
+        return;
     }
 
     // VERIFICAR GAME OVER
     if(!jugador->estaViva()) {
-        timerJuego->stop();
-        timerOleadas->stop();
+        if (timerJuego) timerJuego->stop();
+        if (timerOleadas) timerOleadas->stop();
         qDebug() << "Game Over - Has sido derrotado";
         emit gameOver();
-        return; // Salir temprano para evitar updates innecesarios
+        return;
     }
-
-    // ACTUALIZAR INTERFAZ
-    update();
 }
 
 void Nivel1::verificarYCorregirLimitesMapa(Entidad* entidad)
@@ -541,6 +496,9 @@ void Nivel1::procesarColisiones()
 {
     if (!jugador || enemigos.isEmpty()) return;
 
+    JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if (!jugadorN1) return;
+
     QHash<Enemigo*, bool> enemigosGolpeadosPorArmas;
 
     // ELIMINAR la reproducción de sonido de flecha aquí
@@ -549,7 +507,7 @@ void Nivel1::procesarColisiones()
     bool sonidoGolpeReproducido = false;
 
     // VERIFICAR COLISIONES CON ARMAS
-    for(Arma* arma : jugador->getArmas()) {
+    for(Arma* arma : jugadorN1->getArmas()) {
         if (!arma) continue;
 
         QList<QRectF> areasAtaque = arma->getAreasAtaque();
@@ -604,7 +562,12 @@ void Nivel1::procesarSeleccionMejora(int opcion)
     qDebug() << "✅ Mejora seleccionada:" << mejoraSeleccionada.getNombre();
 
     aplicarMejora(mejoraSeleccionada);
-    jugador->setMejoraPendiente(false);
+
+    JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if (jugadorN1) {
+        jugadorN1->setMejoraPendiente(false);
+    }
+
     mostrandoMejoras = false;
     opcionesMejorasActuales.clear();
 
@@ -626,64 +589,6 @@ void Nivel1::onMejoraSeleccionada()
 {
     resetearTeclas();
     reanudarNivel();
-}
-
-void Nivel1::keyPressEvent(QKeyEvent *event)
-{
-    if (mostrandoMejoras) {
-        switch(event->key()) {
-        case Qt::Key_A:
-        case Qt::Key_Left:
-            // Navegar izquierda
-            opcionSeleccionada = (opcionSeleccionada - 1 + opcionesMejorasActuales.size()) % opcionesMejorasActuales.size();
-            update();
-            break;
-
-        case Qt::Key_D:
-        case Qt::Key_Right:
-            // Navegar derecha
-            opcionSeleccionada = (opcionSeleccionada + 1) % opcionesMejorasActuales.size();
-            update();
-            break;
-
-        case Qt::Key_Space:
-        case Qt::Key_Return:
-        case Qt::Key_Enter:
-            // Seleccionar mejora
-            procesarSeleccionMejora(opcionSeleccionada);
-            break;
-
-        case Qt::Key_1:
-            procesarSeleccionMejora(0);
-            break;
-        case Qt::Key_2:
-            procesarSeleccionMejora(1);
-            break;
-        case Qt::Key_3:
-            procesarSeleccionMejora(2);
-            break;
-        }
-        return;
-    }
-
-    switch(event->key()) {
-    case Qt::Key_W: teclas[0] = true; break;
-    case Qt::Key_A: teclas[1] = true; break;
-    case Qt::Key_S: teclas[2] = true; break;
-    case Qt::Key_D: teclas[3] = true; break;
-    case Qt::Key_P: pausarNivel(); break;
-    case Qt::Key_R: reanudarNivel(); break;
-    }
-}
-
-void Nivel1::keyReleaseEvent(QKeyEvent *event)
-{
-    switch(event->key()) {
-    case Qt::Key_W: teclas[0] = false; break;
-    case Qt::Key_A: teclas[1] = false; break;
-    case Qt::Key_S: teclas[2] = false; break;
-    case Qt::Key_D: teclas[3] = false; break;
-    }
 }
 
 void Nivel1::dibujarEntidadConSprite(QPainter &painter, const QPointF &posicionRelativa, const QString &spriteName, const QSize &displaySize, int frameWidth, int frameHeight, int currentFrame) {
@@ -796,7 +701,10 @@ void Nivel1::dibujarArmas(QPainter &painter)
 {
     QRectF vistaCamara = getVistaCamara();
 
-    for(Arma* arma : jugador->getArmas()) {
+    JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
+    if (!jugadorN1) return;
+
+    for(Arma* arma : jugadorN1->getArmas()) {
 
         QList<Arma::ProyectilSprite> proyectiles = arma->getProyectilesSprites();
         for(const auto& proyectil : proyectiles) {
@@ -919,7 +827,6 @@ void Nivel1::dibujarHUD(QPainter &painter)
     QString enemigosText = QString("ENEMIGOS: %1").arg(enemigos.size());
     int enemigosWidth = ui.getTextWidth(enemigosText, scale);
     ui.drawText(painter, enemigosText, panelCenterX - enemigosWidth/2, textY, scale);
-
 
     if(jugador->tieneMejoraPendiente() && !mostrandoMejoras) {
         int alertY = ribbonY + ribbonHeight + 15;
@@ -1054,5 +961,26 @@ void Nivel1::dibujarMenuMejoras(QPainter &painter)
         ui.drawText(painter, confirmacion, rect().center().x() - confWidth/2, confY + textOffsetY, 0.9f);
     } else {
         ui.drawText(painter, confirmacion, rect().center().x() - confWidth/2, confY + 10, 0.9f);
+    }
+}
+
+void Nivel1::keyPressEvent(QKeyEvent *event)
+{
+    if (mostrandoMejoras) {
+        switch(event->key()) {
+        case Qt::Key_A:
+            opcionSeleccionada = (opcionSeleccionada - 1 + opcionesMejorasActuales.size()) % opcionesMejorasActuales.size();
+            update();
+            break;
+        case Qt::Key_D:
+            opcionSeleccionada = (opcionSeleccionada + 1) % opcionesMejorasActuales.size();
+            update();
+            break;
+        case Qt::Key_Space:
+            procesarSeleccionMejora(opcionSeleccionada);
+            break;
+        }
+    } else {
+        NivelBase::keyPressEvent(event);
     }
 }

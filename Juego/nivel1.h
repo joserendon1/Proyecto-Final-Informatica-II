@@ -1,22 +1,14 @@
 #ifndef NIVEL1_H
 #define NIVEL1_H
 
-#include <QWidget>
-#include <QTimer>
-#include <QKeyEvent>
-#include <QPainter>
-#include <QList>
-#include <QRandomGenerator>
-#include <QDebug>
-#include <QMessageBox>
-#include <QDateTime>
-
+#include "nivelbase.h"
 #include "jugadornivel1.h"
 #include "enemigo.h"
 #include "mejora.h"
-#include "mapa.h"
+#include <QTimer>
+#include <QList>
 
-class Nivel1 : public QWidget
+class Nivel1 : public NivelBase
 {
     Q_OBJECT
 
@@ -24,93 +16,61 @@ public:
     explicit Nivel1(QWidget *parent = nullptr);
     ~Nivel1();
 
-    void iniciarNivel();
-    void pausarNivel();
-    void reanudarNivel();
-    Mapa* getMapa() const { return mapa; }
+    // Implementación del método virtual puro
+    void actualizarJuego(float deltaTime) override;
 
-signals:
-    void gamePaused();
-    void gameResumed();
-    void playerLevelUp();
-    void gameOver();
-    void levelCompleted();
+    // Override de métodos de NivelBase
+    void iniciarNivel() override;
+    void pausarNivel() override;
+    void reanudarNivel() override;
+    void resetearTeclas();
 
 protected:
-    void keyPressEvent(QKeyEvent *event) override;
-    void keyReleaseEvent(QKeyEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
-    void actualizarJuego();
     void generarOleada();
     void onMejoraSeleccionada();
 
 private:
-    // MÉTODOS DE COLISIONES Y MAPA
-    bool verificarColisionMapa(const QRectF& area) const;
+    // Métodos específicos del nivel 1
     void inicializarMapaGrande();
-    void verificarYCorregirLimitesMapa(Entidad* entidad);
-
-    // MÉTODOS DE CÁMARA
-    void actualizarCamara();
-    QRectF getVistaCamara() const;
-    bool estaEnVista(const QPointF& posicion) const;
-    bool estaEnVista(const QRectF& area) const;
-
-    // MÉTODOS DEL JUEGO
-    void procesarColisiones();
+    void inicializarMejoras();
     void generarEnemigo();
-    void dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicion);
+    void procesarColisiones();
+    void limpiarEnemigosMuertos();
+    void verificarYCorregirLimitesMapa(Entidad* entidad);
+    bool verificarColisionMapa(const QRectF& area) const;
+
+    // Métodos de UI
     void dibujarHUD(QPainter &painter);
     void dibujarArmas(QPainter &painter);
     void dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::AreaAtaqueSprite& areaSprite, const QRectF& areaRelativa);
-    void dibujarEntidadConSprite(QPainter &painter, const QPointF &posicionRelativa,
-                                 const QString &spriteName, const QSize &displaySize,
-                                 int frameWidth, int frameHeight, int currentFrame);
-    void limpiarEnemigosMuertos();
-
-    void mostrarOpcionesMejoras();
-    void inicializarMejoras();
-    QList<Mejora> generarOpcionesMejoras(int cantidad = 3);
-    void aplicarMejora(const Mejora& mejora);
-    void resetearTeclas();
-
-    // VARIABLES MIEMBRO
-    JugadorNivel1 *jugador;
-    QList<Enemigo*> enemigos;
-    Mapa *mapa;
-
-    QTimer *timerJuego;
-    QTimer *timerOleadas;
-
-    bool teclas[4];
-    int tiempoTranscurrido;
-    int tiempoObjetivo;
-    int numeroOleada;
-
-    // Configuración de oleadas
-    int enemigosPorOleada;
-    int frecuenciaGeneracion;
-
-    // Estado de mejoras
-    bool mostrandoMejoras;
-    QList<Mejora> todasLasMejoras;
-    QList<Mejora> opcionesMejorasActuales;
-    int opcionSeleccionada;
-
+    void dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicionRelativa);
     void dibujarMenuMejoras(QPainter &painter);
+    void dibujarEntidadConSprite(QPainter &painter, const QPointF &posicionRelativa, const QString &spriteName, const QSize &displaySize, int frameWidth, int frameHeight, int currentFrame);
+
+    // Sistema de mejoras
+    QList<Mejora> generarOpcionesMejoras(int cantidad);
+    void mostrarOpcionesMejoras();
+    void aplicarMejora(const Mejora& mejora);
     void procesarSeleccionMejora(int opcion);
 
-    qint64 tiempoUltimoFrame;
+    // Estado del nivel 1
+    QTimer* timerOleadas;
+    QList<Enemigo*> enemigos;
+    QList<Mejora> todasLasMejoras;
+    QList<Mejora> opcionesMejorasActuales;
 
-    // Variables de cámara
-    QPointF posicionCamara;
-    QSize tamanoVista;
+    int tiempoTranscurrido = 0;
+    int tiempoObjetivo = 120;
+    int numeroOleada = 1;
+    int enemigosPorOleada = 4;
+    int frecuenciaGeneracion = 3500;
 
-    // Límites de spawn
-    float margenSpawnExterior;
-    float margenSpawnInterior;
+    bool mostrandoMejoras = false;
+    int opcionSeleccionada = 0;
 };
 
 #endif // NIVEL1_H
