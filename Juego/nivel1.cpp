@@ -1,5 +1,7 @@
 #include "nivel1.h"
 #include "spritemanager.h"
+#include "uimanager.h"
+#include "audiomanager.h"
 #include <QTimer>
 #include <QPainter>
 #include <QDebug>
@@ -17,21 +19,34 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
     qDebug() << "Nivel1 - Vista 1024x768";
     setFocusPolicy(Qt::StrongFocus);
 
+    // PRIMERO cargar recursos
     SpriteManager::getInstance().preloadGameSprites();
+    UIManager::getInstance().loadResources();
 
-    posicionCamara = QPointF(0, 0);
-    margenSpawnExterior = 120.0f;
-    margenSpawnInterior = 180.0f;
+    qDebug() << "Cargando audio...";
+    bool audioOk = AudioManager::getInstance().loadSounds();
+    qDebug() << "Audio cargado:" << audioOk;
 
+    if (audioOk) {
+        AudioManager::getInstance().playBackgroundMusic();
+        qDebug() << "Música iniciada";
+    }
+
+    // *** CORRECCIÓN: PRIMERO el mapa, LUEGO el jugador ***
     mapa = new Mapa(this);
+
+    // INICIALIZAR el mapa completamente
     inicializarMapaGrande();
 
+    // AHORA crear el jugador cuando el mapa ya está listo
     jugador = new JugadorNivel1();
-    jugador->setPosicion(mapa->getPosicionInicioJugador());
 
-    QPointF posicionInicial = jugador->getPosicion();
+    // Configurar posición y cámara
+    QPointF posicionInicial = mapa->getPosicionInicioJugador();
+    jugador->setPosicion(posicionInicial);
     posicionCamara = posicionInicial - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
 
+    // Resto de la inicialización...
     timerJuego = new QTimer(this);
     timerOleadas = new QTimer(this);
     tiempoUltimoFrame = QDateTime::currentMSecsSinceEpoch();
@@ -55,6 +70,7 @@ Nivel1::Nivel1(QWidget *parent) : QWidget(parent)
 
     inicializarMejoras();
 
+    qDebug() << "Nivel1 completamente inicializado - iniciando nivel...";
     iniciarNivel();
 }
 
@@ -167,6 +183,7 @@ void Nivel1::aplicarMejora(const Mejora& mejora)
     qDebug() << "Aplicando mejora:" << mejora.getNombre();
     mejora.aplicar(jugador);
 
+    AudioManager::getInstance().playLevelUp();
 }
 
 void Nivel1::mostrarOpcionesMejoras()
@@ -223,6 +240,12 @@ bool Nivel1::estaEnVista(const QRectF& area) const
 
 void Nivel1::actualizarJuego()
 {
+    // VERIFICACIONES DE SEGURIDAD AL INICIO
+    if (!jugador || !mapa) {
+        qDebug() << "❌ ERROR: Jugador o mapa es nullptr en actualizarJuego";
+        return;
+    }
+
     qint64 tiempoActual = QDateTime::currentMSecsSinceEpoch();
     float deltaTime = tiempoActual - tiempoUltimoFrame;
     tiempoUltimoFrame = tiempoActual;
@@ -231,10 +254,16 @@ void Nivel1::actualizarJuego()
         return;
     }
 
-    for(Arma* arma : jugador->getArmas()) {
-        arma->setEnemigosCercanos(enemigos);
+    // ACTUALIZAR ARMAS DEL JUGADOR
+    if (!jugador->getArmas().isEmpty()) {
+        for(Arma* arma : jugador->getArmas()) {
+            if (arma) {
+                arma->setEnemigosCercanos(enemigos);
+            }
+        }
     }
 
+    // CONTADOR DE TIEMPO
     static float acumuladorTiempo = 0;
     acumuladorTiempo += deltaTime;
     if(acumuladorTiempo >= 1000) {
@@ -247,64 +276,99 @@ void Nivel1::actualizarJuego()
         }
     }
 
+    // MOVIMIENTO DEL JUGADOR
     QPointF posicionAnterior = jugador->getPosicion();
     jugador->procesarInput(teclas);
-    jugador->actualizar(deltaTime);
 
+    if (jugador) {
+        jugador->actualizar(deltaTime);
+    }
+
+    // VERIFICAR COLISIONES DEL JUGADOR CON EL MAPA
     QRectF areaJugador = jugador->getAreaColision();
     if(!verificarColisionMapa(areaJugador)) {
         jugador->setPosicion(posicionAnterior);
     }
 
+    // MANTENER JUGADOR DENTRO DE LOS LÍMITES DEL MAPA
     verificarYCorregirLimitesMapa(jugador);
 
+    // ACTUALIZAR CÁMARA
     actualizarCamara();
 
+    // SONIDO DE MOVIMIENTO MEJORADO
+    static int moveSoundCooldown = 0;
+    bool isMoving = (teclas[0] || teclas[1] || teclas[2] || teclas[3]);
+
+    if (isMoving && moveSoundCooldown <= 0) {
+        AudioManager::getInstance().playPlayerMove();
+        moveSoundCooldown = 30; // Cooldown aumentado para no saturar
+    }
+
+    if (moveSoundCooldown > 0) {
+        moveSoundCooldown--;
+    }
+
+    // ACTUALIZAR ENEMIGOS
     for(Enemigo *enemigo : enemigos) {
-        if(enemigo->estaViva()) {
+        if(enemigo && enemigo->estaViva()) {
             QPointF posicionAnteriorEnemigo = enemigo->getPosicion();
 
+            // SEGUIR AL JUGADOR SOLO SI ESTÁ CERCA
             float distanciaAlJugador = QLineF(enemigo->getPosicion(), jugador->getPosicion()).length();
             if(distanciaAlJugador < 2000.0f) {
                 enemigo->seguirJugador(jugador->getPosicion());
             }
 
+            // ACTUALIZAR ENEMIGO
             enemigo->actualizar(deltaTime);
 
+            // VERIFICAR COLISIONES DEL ENEMIGO CON EL MAPA
             QRectF areaEnemigo = enemigo->getAreaColision();
             if(!verificarColisionMapa(areaEnemigo)) {
                 enemigo->setPosicion(posicionAnteriorEnemigo);
             }
 
+            // MANTENER ENEMIGO DENTRO DE LOS LÍMITES DEL MAPA
             verificarYCorregirLimitesMapa(enemigo);
         }
     }
 
+    // PROCESAR COLISIONES (CON CONTROL DE SONIDOS)
     procesarColisiones();
+
+    // LIMPIAR ENEMIGOS MUERTOS
     limpiarEnemigosMuertos();
 
+    // ACTUALIZAR ANIMACIONES DEL MAPA
     if(mapa) {
         mapa->actualizarAnimaciones(deltaTime);
     }
 
+    // VERIFICAR MEJORAS PENDIENTES
     if(jugador->tieneMejoraPendiente() && !mostrandoMejoras) {
         mostrarOpcionesMejoras();
     }
 
+    // VERIFICAR FIN DEL NIVEL
     if(tiempoTranscurrido >= tiempoObjetivo) {
         timerJuego->stop();
         timerOleadas->stop();
         qDebug() << "Nivel completado! Has sobrevivido" << tiempoObjetivo << "segundos";
         emit levelCompleted();
+        return; // Salir temprano para evitar updates innecesarios
     }
 
+    // VERIFICAR GAME OVER
     if(!jugador->estaViva()) {
         timerJuego->stop();
         timerOleadas->stop();
         qDebug() << "Game Over - Has sido derrotado";
         emit gameOver();
+        return; // Salir temprano para evitar updates innecesarios
     }
 
+    // ACTUALIZAR INTERFAZ
     update();
 }
 
@@ -475,20 +539,42 @@ void Nivel1::generarEnemigo()
 
 void Nivel1::procesarColisiones()
 {
+    if (!jugador || enemigos.isEmpty()) return;
+
     QHash<Enemigo*, bool> enemigosGolpeadosPorArmas;
 
+    // ELIMINAR la reproducción de sonido de flecha aquí
+    // Solo mantener el sonido de golpe si quieres
+    static int cooldownGolpe = 0;
+    bool sonidoGolpeReproducido = false;
+
+    // VERIFICAR COLISIONES CON ARMAS
     for(Arma* arma : jugador->getArmas()) {
+        if (!arma) continue;
+
         QList<QRectF> areasAtaque = arma->getAreasAtaque();
 
         for(const QRectF& area : areasAtaque) {
             for(Enemigo* enemigo : enemigos) {
-                if(enemigo->estaViva() &&
+                if(enemigo && enemigo->estaViva() &&
                     !enemigosGolpeadosPorArmas.value(enemigo, false) &&
                     area.intersects(enemigo->getAreaColision())) {
 
+                    // ELIMINADO: Sonido de flecha aquí
+                    // SOLO mantener sonido de impacto/golpe
+
+                    // APLICAR DAÑO
                     enemigo->recibirDanio(arma->getDanio());
                     enemigosGolpeadosPorArmas[enemigo] = true;
 
+                    // SONIDO GOLPE - Solo una vez por frame
+                    if (!sonidoGolpeReproducido && cooldownGolpe <= 0) {
+                        AudioManager::getInstance().playEnemyHit();
+                        sonidoGolpeReproducido = true;
+                        cooldownGolpe = 3; // Cooldown en frames
+                    }
+
+                    // VERIFICAR SI EL ENEMIGO MURIÓ
                     if(!enemigo->estaViva()) {
                         jugador->ganarExperiencia(enemigo->getExperienciaQueDa());
                     }
@@ -497,10 +583,14 @@ void Nivel1::procesarColisiones()
         }
     }
 
+    // REDUCIR COOLDOWNS
+    if (cooldownGolpe > 0) cooldownGolpe--;
+
+    // COLISIONES JUGADOR-ENEMIGO (DAÑO POR CONTACTO)
     for(Enemigo* enemigo : enemigos) {
-        if(enemigo->estaViva() &&
+        if(enemigo && enemigo->estaViva() &&
             jugador->getAreaColision().intersects(enemigo->getAreaColision())) {
-            jugador->recibirDanio(0.5f); // Daño por frame de contacto
+            jugador->recibirDanio(0.5f);
         }
     }
 }
@@ -692,6 +782,14 @@ void Nivel1::paintEvent(QPaintEvent *event)
     if (mostrandoMejoras) {
         dibujarMenuMejoras(painter);
     }
+
+    QPixmap cursor = UIManager::getInstance().getCursor();
+    if(!cursor.isNull()) {
+        QPoint cursorPos = mapFromGlobal(QCursor::pos());
+        painter.drawPixmap(cursorPos.x() - cursor.width()/2,
+                           cursorPos.y() - cursor.height()/2,
+                           cursor);
+    }
 }
 
 void Nivel1::dibujarArmas(QPainter &painter)
@@ -772,57 +870,68 @@ void Nivel1::dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::Area
 
 void Nivel1::dibujarHUD(QPainter &painter)
 {
-    painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 10)); // Fuente un poco más pequeña
+    UIManager& ui = UIManager::getInstance();
 
-    // Información básica - posiciones ajustadas
-    painter.drawText(10, 15, QString("Vida: %1").arg(jugador->getVida()));
-    painter.drawText(10, 30, QString("Nivel: %1").arg(jugador->getNivel()));
+    const int hudX = 10;
+    const int hudY = 10;
+    const int panelWidth = 192;
+    const int panelHeight = 192;
+    const int ribbonHeight = 64;
 
-    // Barra de experiencia más pequeña
-    int expActual = jugador->getExperiencia();
-    int expRequerida = jugador->getExperienciaParaSiguienteNivel();
-    float porcentajeEXP = (float)expActual / expRequerida;
-
-    QRectF barraEXPFondo(10, 40, 150, 6); // Más estrecha
-    QRectF barraEXP(10, 40, 150 * porcentajeEXP, 6);
-
-    painter.setBrush(QBrush(QColor(50, 50, 50)));
-    painter.setPen(Qt::NoPen);
-    painter.drawRect(barraEXPFondo);
-
-    painter.setBrush(QBrush(QColor(0, 200, 255)));
-    painter.drawRect(barraEXP);
-
-    painter.setPen(Qt::white);
-    painter.drawText(15, 48, QString("EXP: %1/%2").arg(expActual).arg(expRequerida));
-
-    // Tiempo y oleadas
-    painter.drawText(10, 65, QString("Tiempo: %1/%2").arg(tiempoTranscurrido).arg(tiempoObjetivo));
-    painter.drawText(10, 80, QString("Oleada: %1").arg(numeroOleada));
-    painter.drawText(10, 95, QString("Enemigos: %1").arg(enemigos.size()));
-
-    // Información de siguiente oleada
-    painter.drawText(10, 110, QString("Siguiente: %1s").arg(frecuenciaGeneracion / 1000));
-
-    // Armás activas - posición ajustada
-    int yPos = 125;
-    painter.drawText(10, yPos, "Armas Activas:");
-    yPos += 15;
-
-    for(Arma* arma : jugador->getArmas()) {
-        painter.drawText(20, yPos, QString("- %1").arg(arma->getNombre()));
-        yPos += 12; // Menos espacio entre líneas
+    if(!ui.getHudPanel().isNull()) {
+        painter.drawPixmap(hudX, hudY, panelWidth, panelHeight, ui.getHudPanel());
+    } else {
+        painter.fillRect(hudX, hudY, panelWidth, panelHeight, QColor(0, 0, 0, 180));
     }
 
-    // Controles - posición ajustada
-    painter.drawText(10, 700, "Controles: WASD - Movimiento"); // Más arriba
-    painter.drawText(10, 715, "P - Pausa, R - Reanudar");
+    int ribbonY = hudY + panelHeight + 5;
+
+    int panelCenterX = hudX + panelWidth / 2;
+    int textY = hudY + 35;
+    float scale = 1.0f;
+    int lineHeight = ui.getTextHeight(scale) + 5;
+
+    QString vidaText = QString("VIDA: %1").arg(jugador->getVida());
+    int vidaWidth = ui.getTextWidth(vidaText, scale);
+    ui.drawText(painter, vidaText, panelCenterX - vidaWidth/2, textY, scale);
+    textY += lineHeight;
+
+    QString nivelText = QString("NIVEL: %1").arg(jugador->getNivel());
+    int nivelWidth = ui.getTextWidth(nivelText, scale);
+    ui.drawText(painter, nivelText, panelCenterX - nivelWidth/2, textY, scale);
+    textY += lineHeight;
+
+    QString expText = QString("EXP: %1/%2").arg(jugador->getExperiencia()).arg(jugador->getExperienciaParaSiguienteNivel());
+    int expWidth = ui.getTextWidth(expText, scale);
+    ui.drawText(painter, expText, panelCenterX - expWidth/2, textY, scale);
+    textY += lineHeight + 10;
+
+    QString tiempoText = QString("TIEMPO: %1/%2").arg(tiempoTranscurrido).arg(tiempoObjetivo);
+    int tiempoWidth = ui.getTextWidth(tiempoText, scale);
+    ui.drawText(painter, tiempoText, panelCenterX - tiempoWidth/2, textY, scale);
+    textY += lineHeight;
+
+    QString oleadaText = QString("OLEADA: %1").arg(numeroOleada);
+    int oleadaWidth = ui.getTextWidth(oleadaText, scale);
+    ui.drawText(painter, oleadaText, panelCenterX - oleadaWidth/2, textY, scale);
+    textY += lineHeight;
+
+    QString enemigosText = QString("ENEMIGOS: %1").arg(enemigos.size());
+    int enemigosWidth = ui.getTextWidth(enemigosText, scale);
+    ui.drawText(painter, enemigosText, panelCenterX - enemigosWidth/2, textY, scale);
+
 
     if(jugador->tieneMejoraPendiente() && !mostrandoMejoras) {
-        painter.setPen(Qt::yellow);
-        painter.setFont(QFont("Arial", 12, QFont::Bold));
-        painter.drawText(rect().center().x() - 100, 30, "¡MEJORA DISPONIBLE! (Sube de nivel)");
+        int alertY = ribbonY + ribbonHeight + 15;
+        QString alertText = "!MEJORA DISPONIBLE!";
+        int alertWidth = ui.getTextWidth(alertText, 1.0f);
+
+        if(!ui.getRibbonRed().isNull()) {
+            int ribbonWidth = alertWidth + 30;
+            painter.drawPixmap(panelCenterX - ribbonWidth/2, alertY - 20, ribbonWidth, ribbonHeight, ui.getRibbonRed());
+        }
+
+        ui.drawText(painter, alertText, panelCenterX - alertWidth/2, alertY + 10, 1.0f);
     }
 }
 
@@ -851,71 +960,99 @@ void Nivel1::dibujarMenuMejoras(QPainter &painter)
 {
     if (!mostrandoMejoras || opcionesMejorasActuales.isEmpty()) return;
 
-    // Fondo semitransparente
-    painter.fillRect(rect(), QColor(0, 0, 0, 180));
+    UIManager& ui = UIManager::getInstance();
 
-    // Título
-    painter.setPen(Qt::yellow);
-    painter.setFont(QFont("Arial", 24, QFont::Bold));
-    painter.drawText(rect().center().x() - 150, 100, "¡NUEVA MEJORA DISPONIBLE!");
+    painter.fillRect(rect(), QColor(0, 0, 0, 200));
 
-    // Instrucciones
-    painter.setPen(Qt::white);
-    painter.setFont(QFont("Arial", 16));
-    painter.drawText(rect().center().x() - 120, 140, "Usa A/D para navegar, ESPACIO para seleccionar");
+    QString titulo = "MEJORA";
+    int tituloWidth = ui.getTextWidth(titulo, 1.5f);
+    int tituloX = rect().center().x() - tituloWidth/2;
+    int tituloY = 80;
 
-    // Dibujar opciones
-    int startY = 200;
-    int optionHeight = 120;
-    int optionWidth = 600;
+    if(!ui.getRibbonBlue().isNull()) {
+        int ribbonWidth = tituloWidth + 40;
+        painter.drawPixmap(tituloX - 20, tituloY - 30, ribbonWidth, 64, ui.getRibbonBlue());
+    }
+    ui.drawText(painter, titulo, tituloX, tituloY, 1.5f);
+
+    QString instrucciones = "A/D PARA NAVEGAR   |   ESPACIO PARA SELECCIONAR";
+    int instWidth = ui.getTextWidth(instrucciones, 0.9f);
+    int instX = rect().center().x() - instWidth/2;
+    int instY = tituloY + 50;
+
+    ui.drawText(painter, instrucciones, instX, instY, 0.9f);
+
+    int optionWidth = 450;
+    int optionHeight = 100;
+    int startY = instY + 50;
 
     for (int i = 0; i < opcionesMejorasActuales.size(); ++i) {
         const Mejora& mejora = opcionesMejorasActuales[i];
 
-        // Fondo de la opción
         QRect optionRect(rect().center().x() - optionWidth/2,
                          startY + i * optionHeight,
                          optionWidth,
-                         optionHeight - 20);
+                         optionHeight - 15);
 
-        // Color según si está seleccionada
         if (i == opcionSeleccionada) {
-            painter.setBrush(QBrush(QColor(100, 100, 200, 200)));
-            painter.setPen(QPen(Qt::yellow, 3));
+            if(!ui.getRibbonRed().isNull()) {
+                painter.drawPixmap(optionRect, ui.getRibbonRed(), ui.getRibbonRed().rect());
+            } else {
+                painter.fillRect(optionRect, QColor(100, 100, 200, 200));
+            }
+            painter.setPen(QPen(Qt::yellow, 2));
         } else {
-            painter.setBrush(QBrush(QColor(60, 60, 100, 200)));
+            if(!ui.getRibbonBlue().isNull()) {
+                painter.drawPixmap(optionRect, ui.getRibbonBlue(), ui.getRibbonBlue().rect());
+            } else {
+                painter.fillRect(optionRect, QColor(60, 60, 100, 200));
+            }
             painter.setPen(QPen(Qt::white, 1));
         }
 
-        painter.drawRoundedRect(optionRect, 15, 15);
+        int optionCenterX = optionRect.center().x();
+        int textY = optionRect.top() + 30;
 
-        // Texto de la mejora
-        painter.setPen(i == opcionSeleccionada ? Qt::yellow : Qt::white);
-        painter.setFont(QFont("Arial", 16, i == opcionSeleccionada ? QFont::Bold : QFont::Normal));
+        QString textoOpcion = QString("%1. %2").arg(i + 1).arg(mejora.getNombre());
+        int textoWidth = ui.getTextWidth(textoOpcion, i == opcionSeleccionada ? 1.1f : 1.0f);
+        ui.drawText(painter, textoOpcion, optionCenterX - textoWidth/2, textY,
+                    i == opcionSeleccionada ? 1.1f : 1.0f);
 
-        // Nombre
-        painter.drawText(optionRect.left() + 20, optionRect.top() + 30,
-                         QString("%1. %2").arg(i + 1).arg(mejora.getNombre()));
+        QString descripcion = mejora.getDescripcion();
+        int descY = textY + 25;
+        int descWidth = ui.getTextWidth(descripcion, 0.8f);
 
-        // Descripción
-        painter.setFont(QFont("Arial", 12));
-        painter.setPen(Qt::lightGray);
-        painter.drawText(optionRect.left() + 40, optionRect.top() + 60, mejora.getDescripcion());
+        if(descWidth <= optionWidth - 40) {
+            ui.drawText(painter, descripcion, optionCenterX - descWidth/2, descY, 0.8f);
+        } else {
 
-        // Indicador de selección
-        if (i == opcionSeleccionada) {
-            painter.setPen(QPen(Qt::yellow, 2));
-            painter.setBrush(Qt::NoBrush);
-            painter.drawRect(optionRect.adjusted(2, 2, -2, -2));
+            int maxChars = (optionWidth - 40) / ui.getTextWidth("A", 0.8f);
+            int breakPoint = descripcion.lastIndexOf(' ', maxChars);
+            if(breakPoint == -1) breakPoint = maxChars;
 
-            // Flecha selección
-            painter.drawText(optionRect.left() + 10, optionRect.top() + 35, "➤");
+            QString linea1 = descripcion.left(breakPoint).trimmed();
+            QString linea2 = descripcion.mid(breakPoint + 1).trimmed();
+
+            int linea1Width = ui.getTextWidth(linea1, 0.8f);
+            int linea2Width = ui.getTextWidth(linea2, 0.8f);
+
+            ui.drawText(painter, linea1, optionCenterX - linea1Width/2, descY, 0.8f);
+            ui.drawText(painter, linea2, optionCenterX - linea2Width/2, descY + 15, 0.8f);
         }
     }
 
-    // Información adicional
-    painter.setPen(Qt::cyan);
-    painter.setFont(QFont("Arial", 14));
-    painter.drawText(rect().center().x() - 100, startY + opcionesMejorasActuales.size() * optionHeight + 40,
-                     QString("Seleccionada: %1 - Presiona ESPACIO para confirmar").arg(opcionSeleccionada + 1));
+    int confY = startY + opcionesMejorasActuales.size() * optionHeight + 20;
+    QString confirmacion = QString("ESPACIO\n PARA\n CONFIRMAR").arg(opcionSeleccionada + 1);
+    int confWidth = ui.getTextWidth(confirmacion, 0.9f);
+
+    if(!ui.getRibbonGreen().isNull()) {
+        int ribbonWidth = confWidth + 60;
+        int ribbonHeight = 40;
+        int textOffsetY = 5;
+
+        painter.drawPixmap(rect().center().x() - ribbonWidth/2, confY - 10, ribbonWidth, ribbonHeight, ui.getRibbonGreen());
+        ui.drawText(painter, confirmacion, rect().center().x() - confWidth/2, confY + textOffsetY, 0.9f);
+    } else {
+        ui.drawText(painter, confirmacion, rect().center().x() - confWidth/2, confY + 10, 0.9f);
+    }
 }

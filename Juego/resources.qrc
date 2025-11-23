@@ -18,4 +18,27 @@
         <file>maps/Tower.png</file>
         <file>maps/Tree.png</file>
     </qresource>
+    <qresource prefix="/ui">
+        <file>ui/button_hover.png</file>
+        <file>ui/button_normal.png</file>
+        <file>ui/cursor.png</file>
+        <file>ui/hud_background.png</file>
+        <file>ui/hud_regular.png</file>
+        <file>ui/hud_slide.png</file>
+        <file>ui/Ribbon_Blue_3Slides.png</file>
+        <file>ui/Ribbon_Red_3Slides.png</file>
+        <file>ui/Ribbon_Yellow_3Slides.png</file>
+    </qresource>
+    <qresource prefix="/font">
+        <file>fonts/monogram.ttf</file>
+    </qresource>
+    <qresource prefix="/sounds">
+        <file>sounds/arrow_shot.ogg</file>
+        <file>sounds/background_music.ogg</file>
+        <file>sounds/button_click.ogg</file>
+        <file>sounds/enemy_hit.ogg</file>
+        <file>sounds/level_up.ogg</file>
+        <file>sounds/player_hurt.ogg</file>
+        <file>sounds/player_move.ogg</file>
+    </qresource>
 </RCC>

@@ -1,4 +1,5 @@
 #include "jugadornivel1.h"
+#include "audiomanager.h"
 #include <QtMath>
 #include <QDebug>
 
@@ -76,6 +77,10 @@ void JugadorNivel1::activarArmas() {
     for(Arma* arma : armas) {
         if(arma->puedeAtacar()) {
             arma->activar(posicion, ultimaDireccion);
+
+            if (arma->getTipo() == Arma::BALLESTA || arma->getTipo() == Arma::ARCO) {
+                AudioManager::getInstance().playArrowShot();
+            }
         }
     }
 }

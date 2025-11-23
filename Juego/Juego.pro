@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -10,6 +10,7 @@ CONFIG += c++17
 
 SOURCES += \
     arma.cpp \
+    audiomanager.cpp \
     enemigo.cpp \
     entidad.cpp \
     jugadornivel1.cpp \
@@ -18,10 +19,12 @@ SOURCES += \
     mapa.cpp \
     mejora.cpp \
     nivel1.cpp \
-    spritemanager.cpp
+    spritemanager.cpp \
+    uimanager.cpp
 
 HEADERS += \
     arma.h \
+    audiomanager.h \
     enemigo.h \
     entidad.h \
     jugadornivel1.h \
@@ -29,7 +32,8 @@ HEADERS += \
     mapa.h \
     mejora.h \
     nivel1.h \
-    spritemanager.h
+    spritemanager.h \
+    uimanager.h
 
 FORMS += \
     mainwindow.ui
