@@ -52,7 +52,7 @@ void Mapa::crearMapaGrande(const QSize& tamano)
     int tilesX = tamano.width() / tileSize;
     int tilesY = tamano.height() / tileSize;
 
-    qDebug() << "Creando mapa con tiles de suelo:" << tilesX << "x" << tilesY;
+    qDebug() << "Creando mapa decorativo con tiles de suelo:" << tilesX << "x" << tilesY;
 
     for(int x = 0; x <= tilesX; x++) {
         for(int y = 0; y <= tilesY; y++) {
@@ -66,64 +66,12 @@ void Mapa::crearMapaGrande(const QSize& tamano)
     int centroX = tamano.width() / 2;
     int centroY = tamano.height() / 2;
 
-
-    QList<QPointF> posicionesCasas = {
-        QPointF(centroX - 400, centroY - 300),
-        QPointF(centroX + 400, centroY - 300),
-        QPointF(centroX - 400, centroY + 300),
-        QPointF(centroX + 400, centroY + 300)
-    };
-
-    for(const QPointF& pos : posicionesCasas) {
-        ElementoMapa casa;
-        casa.sprite = spriteHouse;
-        casa.posicion = pos;
-        casa.areaColision = QRectF(pos.x() - 40, pos.y() - 60, 80, 120);
-        casa.esDecoracion = false;
-        casa.esAnimado = false;
-        elementosMapa.append(casa);
-    }
-
-    QList<QPointF> posicionesTorres = {
-        QPointF(centroX - 600, centroY),
-        QPointF(centroX + 600, centroY),
-        QPointF(centroX, centroY - 450),
-        QPointF(centroX, centroY + 450)
-    };
-
-    for(const QPointF& pos : posicionesTorres) {
-        ElementoMapa torre;
-        torre.sprite = spriteTower;
-        torre.posicion = pos;
-        torre.areaColision = QRectF(pos.x() - 40, pos.y() - 80, 80, 160);
-        torre.esDecoracion = false;
-        torre.esAnimado = false;
-        elementosMapa.append(torre);
-    }
-
-    // 3. ROCAS
-    for(int i = 0; i < 20; i++) {
+    for(int i = 0; i < 40; i++) {
         int x, y;
         do {
             x = QRandomGenerator::global()->bounded(200, tamano.width() - 200);
             y = QRandomGenerator::global()->bounded(200, tamano.height() - 200);
         } while (qAbs(x - centroX) < 300 && qAbs(y - centroY) < 300);
-
-        ElementoMapa roca;
-        roca.sprite = spriteRoca;
-        roca.posicion = QPointF(x, y);
-        roca.areaColision = QRectF(x - 20, y - 20, 40, 40);
-        roca.esDecoracion = false;
-        roca.esAnimado = false;
-        elementosMapa.append(roca);
-    }
-
-    for(int i = 0; i < 25; i++) {
-        int x, y;
-        do {
-            x = QRandomGenerator::global()->bounded(150, tamano.width() - 150);
-            y = QRandomGenerator::global()->bounded(150, tamano.height() - 150);
-        } while (qAbs(x - centroX) < 400 && qAbs(y - centroY) < 400);
 
         ElementoMapa arbol;
         arbol.sprite = spriteTreeSheet;
@@ -140,7 +88,7 @@ void Mapa::crearMapaGrande(const QSize& tamano)
         elementosMapa.append(arbol);
     }
 
-    for(int i = 0; i < 35; i++) {
+    for(int i = 0; i < 60; i++) {
         int x = QRandomGenerator::global()->bounded(100, tamano.width() - 100);
         int y = QRandomGenerator::global()->bounded(100, tamano.height() - 100);
 
@@ -163,9 +111,9 @@ void Mapa::crearMapaGrande(const QSize& tamano)
 
     mapaCompleto = mapaTemp;
 
-    qDebug() << "🗺️ Mapa creado con" << elementosMapa.size() << "elementos";
-    qDebug() << "   - Árboles animados: 25";
-    qDebug() << "   - Arbustos animados: 35";
+    qDebug() << "️ Mapa decorativo creado con" << elementosMapa.size() << "elementos";
+    qDebug() << "   - Árboles animados: 40";
+    qDebug() << "   - Arbustos animados: 60";
 
     procesarColisionesDesdeMapa();
     posicionInicio = QPointF(centroX, centroY);
@@ -246,21 +194,7 @@ void Mapa::procesarColisionesDesdeMapa()
         }
     }
 
-    for(const ElementoMapa& elemento : elementosMapa) {
-        if(!elemento.esDecoracion && !elemento.areaColision.isEmpty()) {
-            QRectF area = elemento.areaColision;
-
-            for(int x = qMax(0, (int)area.left()); x < qMin(ancho, (int)area.right()); x++) {
-                for(int y = qMax(0, (int)area.top()); y < qMin(alto, (int)area.bottom()); y++) {
-                    if(x < ancho && y < alto) {
-                        capaColisiones[y][x] = true;
-                    }
-                }
-            }
-        }
-    }
-
-    qDebug() << "🎯 Capa de colisiones procesada:" << ancho << "x" << alto;
+    qDebug() << " Mapa completamente transitable - Sin obstáculos de colisión";
 }
 
 void Mapa::dibujar(QPainter& painter, const QRectF& vista)
