@@ -15,13 +15,19 @@ SOURCES += \
     entidad.cpp \
     jugadorbase.cpp \
     jugadornivel1.cpp \
+    jugadornivel2.cpp \
+    jugadornivel3.cpp \
     main.cpp \
+    mainmenu.cpp \
     mainwindow.cpp \
     mapa.cpp \
     mejora.cpp \
     nivel1.cpp \
+    nivel2.cpp \
+    nivel3.cpp \
     nivelbase.cpp \
     spritemanager.cpp \
+    torre.cpp \
     uimanager.cpp
 
 HEADERS += \
@@ -31,12 +37,18 @@ HEADERS += \
     entidad.h \
     jugadorbase.h \
     jugadornivel1.h \
+    jugadornivel2.h \
+    jugadornivel3.h \
+    mainmenu.h \
     mainwindow.h \
     mapa.h \
     mejora.h \
     nivel1.h \
+    nivel2.h \
+    nivel3.h \
     nivelbase.h \
     spritemanager.h \
+    torre.h \
     uimanager.h
 
 FORMS += \

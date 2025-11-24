@@ -69,19 +69,31 @@ Nivel1::~Nivel1()
     if (timerOleadas) {
         timerOleadas->stop();
         delete timerOleadas;
+        timerOleadas = nullptr;
     }
+
     qDeleteAll(enemigos);
     enemigos.clear();
+
+    AudioManager::getInstance().stopBackgroundMusic();
+
+    qDebug() << "Nivel 1 destruido - recursos limpiados";
 }
 
 void Nivel1::iniciarNivel()
 {
+    AudioManager::getInstance().stopBackgroundMusic();
+
     if (timerJuego) {
         timerJuego->start(16);
     }
     if (timerOleadas) {
         timerOleadas->start(frecuenciaGeneracion);
     }
+
+    AudioManager::getInstance().playBackgroundMusic();
+
+    qDebug() << "Nivel 1 iniciado - audio configurado";
 }
 
 void Nivel1::inicializarMapaGrande()

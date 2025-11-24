@@ -13,13 +13,13 @@ class Arma : public QObject
     Q_OBJECT
 
 public:
-    enum Tipo { BALLESTA, ACEITE, ARCO };
+    enum Tipo { BALLESTA, ACEITE, ARCO, CATAPULTA, MAGICA }; // AÑADIDOS tipos de torre
 
     Arma(Tipo tipo);
-    ~Arma();
+    virtual ~Arma();
 
-    void activar(const QPointF& posicion, const QPointF& direccion = QPointF(0, -1));
-    void actualizar(float deltaTime);
+    virtual void activar(const QPointF& posicion, const QPointF& direccion = QPointF(0, -1)); // AÑADIDO virtual
+    virtual void actualizar(float deltaTime); // AÑADIDO virtual
     QList<QRectF> getAreasAtaque() const;
     bool puedeAtacar() const { return tiempoCooldownRestante <= 0; }
 
@@ -56,15 +56,14 @@ public:
         float tiempoDesdeUltimoFrame;
     };
 
-
     QList<ProyectilSprite> getProyectilesSprites() const { return proyectilesSprites; }
     QList<AreaAtaqueSprite> getAreasAtaqueSprites() const { return areasAtaqueSprites; }
     QString getSpriteSheetName() const;
     int getTotalFrames() const;
 
-private:
+protected:
     static constexpr float DURACION_ATAQUE_ACEITE = 1400.0f;
-    void crearAtaqueEspada(const QPointF& posicion, const QPointF& direccion);
+
     void crearAtaqueBallesta(const QPointF& posicion, const QPointF& direccion);
     void crearAtaqueArco(const QPointF& posicion, const QPointF& direccion);
     void crearAtaqueAceite(const QPointF& posicion, const QPointF& direccion);
@@ -89,7 +88,6 @@ private:
     QList<QPointF> direccionesProyectiles;
     QList<float> tiemposVidaProyectiles;
 
-    //VARIABLES PARA SPRITES
     QList<ProyectilSprite> proyectilesSprites;
     QList<AreaAtaqueSprite> areasAtaqueSprites;
 
@@ -98,6 +96,9 @@ private:
 
     QList<Enemigo*> enemigosCercanos;
     float rangoDeteccion;
+
+private:
+    void crearAtaqueEspada(const QPointF& posicion, const QPointF& direccion);
 };
 
 #endif // ARMA_H

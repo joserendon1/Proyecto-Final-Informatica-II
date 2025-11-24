@@ -2,13 +2,16 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "nivel1.h"
+#include <QTimer>
 
 QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
+namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+class Nivel1;
+class Nivel2;
+class Nivel3;
+class MainMenu;
 
 class MainWindow : public QMainWindow
 {
@@ -19,27 +22,36 @@ public:
     ~MainWindow();
 
 private slots:
-    void onGamePaused();
-    void onGameResumed();
-    void onPlayerLevelUp();
-    void onGameOver();
-    void onLevelCompleted();
+    void mostrarMenuPrincipal();
+    void iniciarNivel1();
+    void iniciarNivel2();
+    void iniciarNivel3();
+    void limpiarNivelActual();
 
-    // Slots para menús
     void onNewGame();
     void onPauseGame();
     void onResumeGame();
     void onShowControls();
     void onShowAbout();
 
-private:
-    Ui::MainWindow *ui;
-    Nivel1 *nivel1;
+    void onGamePaused();
+    void onGameResumed();
+    void onPlayerLevelUp();
+    void onGameOver();
+    void onLevelCompleted();
 
+private:
     void setupMenu();
     void setupToolbar();
     void setupStatusBar();
     void connectGameSignals();
+
+private:
+    Ui::MainWindow *ui;
+    Nivel1 *nivel1;
+    Nivel2 *nivel2;
+    Nivel3 *nivel3;
+    MainMenu *menuPrincipal;
 };
 
 #endif // MAINWINDOW_H

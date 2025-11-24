@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <algorithm>
 #include <QDir>
+#include <QTimer>
 
 AudioManager& AudioManager::getInstance()
 {
@@ -162,7 +163,81 @@ void AudioManager::stopSound(const QString& soundName)
 {
     if (soundEffects.contains(soundName)) {
         soundEffects[soundName].player->stop();
+        qDebug() << "🔊 Sonido detenido:" << soundName;
     }
+}
+
+void AudioManager::stopAllSounds()
+{
+    qDebug() << "🔊 Deteniendo todos los sonidos...";
+
+    // Detener música de fondo
+    stopBackgroundMusic();
+
+    // Detener todos los efectos de sonido
+    stopAllEffects();
+
+    qDebug() << "🔊 Todos los sonidos detenidos";
+}
+
+void AudioManager::stopAllEffects()
+{
+    qDebug() << "🔊 Deteniendo todos los efectos de sonido...";
+
+    for (auto& sound : soundEffects) {
+        if (sound.player && sound.player->playbackState() == QMediaPlayer::PlayingState) {
+            sound.player->stop();
+            sound.player->setPosition(0); // Reiniciar a inicio
+        }
+    }
+
+    qDebug() << "🔊 Todos los efectos de sonido detenidos";
+}
+
+void AudioManager::cleanUp()
+{
+    qDebug() << "🔊 Limpiando AudioManager...";
+
+    stopAllSounds();
+
+    // Limpiar efectos de sonido
+    for (auto& sound : soundEffects) {
+        if (sound.player) {
+            sound.player->stop();
+            delete sound.player;
+        }
+        if (sound.output) {
+            delete sound.output;
+        }
+    }
+    soundEffects.clear();
+
+    // Limpiar música
+    if (backgroundMusic) {
+        backgroundMusic->stop();
+        delete backgroundMusic;
+        backgroundMusic = nullptr;
+    }
+    if (musicOutput) {
+        delete musicOutput;
+        musicOutput = nullptr;
+    }
+
+    qDebug() << "🔊 AudioManager limpiado completamente";
+}
+
+void AudioManager::resetForNewLevel()
+{
+    qDebug() << "🔊 Reiniciando AudioManager para nuevo nivel...";
+
+    // Detener todo el audio actual
+    stopAllSounds();
+
+    // Pequeño delay para asegurar que todo se detuvo
+    QTimer::singleShot(100, [this]() {
+        loadSounds();
+        qDebug() << "🔊 AudioManager reiniciado para nuevo nivel";
+    });
 }
 
 void AudioManager::setMasterVolume(float volume)
@@ -193,13 +268,14 @@ void AudioManager::updateVolumes()
 
     // Actualizar volumen de efectos
     for (auto& effect : soundEffects) {
-        effect.output->setVolume(effectsVolume * masterVolume);
+        if (effect.output) {
+            effect.output->setVolume(effectsVolume * masterVolume);
+        }
     }
 
     qDebug() << "🔊 Volumen efectos actualizado:" << effectsVolume * masterVolume;
 }
 
-// MÉTODOS ESPECÍFICOS
 void AudioManager::playBackgroundMusic()
 {
     if (backgroundMusic && !backgroundMusic->source().isEmpty()) {
@@ -238,7 +314,11 @@ void AudioManager::playLevelUp()
     playSound("level_up", 1.0f);
 }
 
-// MÉTODO DE DIAGNÓSTICO
+void AudioManager::playPlayerHurt()
+{
+    playSound("player_hurt", 0.8f);
+}
+
 void AudioManager::testAllSounds()
 {
     qDebug() << "=== TESTEANDO TODOS LOS SONIDOS ===";

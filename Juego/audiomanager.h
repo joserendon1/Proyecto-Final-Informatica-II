@@ -9,6 +9,8 @@
 #include <QMediaDevices>
 #include <QAudioDevice>
 #include <QThread>
+#include <QHash>
+#include <QDateTime>
 
 class AudioManager : public QObject
 {
@@ -31,6 +33,13 @@ public:
     void playArrowShot();
     void playEnemyHit();
     void playLevelUp();
+    void playPlayerHurt();
+
+    // NUEVOS MÉTODOS DE LIMPIEZA
+    void stopAllSounds();
+    void stopAllEffects();
+    void cleanUp();
+    void resetForNewLevel();
 
     // Método de diagnóstico para probar sonidos
     void testAllSounds();
