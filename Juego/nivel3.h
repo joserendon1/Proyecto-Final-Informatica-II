@@ -27,6 +27,13 @@ private slots:
     void actualizarJuego(float deltaTime) override;
 
 private:
+
+    const int SUELO_Y = 550;
+    const int AJUSTE_OBSTACULO1 = 30;
+    const int AJUSTE_OBSTACULO2 = 40;
+    const int AJUSTE_OBSTACULO3 = 15;
+    const int AJUSTE_OBSTACULO4 = 35;
+
     void setupNivel();
     void generarObstaculos();
     void generarPatronObstaculos(int tipoPatron);
@@ -36,6 +43,9 @@ private:
     void actualizarAnimacion(float deltaTime);
     void dibujarHUD(QPainter &painter);
     void dibujarJugador(QPainter &painter);
+    void dibujarSueloConSprite(QPainter &painter);
+    void dibujarObstaculosConSprites(QPainter &painter);
+    int determinarTipoObstaculo(const QRectF& obstaculo);
 
     // Propiedades específicas del nivel 3
     float velocidadScroll;
@@ -59,6 +69,10 @@ private:
     // Estados del juego
     bool nivelCompletado;
     bool juegoActivo;
+
+    QList<QPair<float, int>> milestonesObstaculos;
+    QList<int> getObstaculosDisponibles();
+    QList<int> tiposObstaculos;
 };
 
 #endif // NIVEL3_H

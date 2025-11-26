@@ -17,6 +17,11 @@
         <file>maps/Rock.png</file>
         <file>maps/Tower.png</file>
         <file>maps/Tree.png</file>
+        <file>maps/Obstaculo1.png</file>
+        <file>maps/Obstaculo2.png</file>
+        <file>maps/Obstaculo3.png</file>
+        <file>maps/Obstaculo4.png</file>
+        <file>maps/ground2.png</file>
     </qresource>
     <qresource prefix="/ui">
         <file>ui/button_hover.png</file>

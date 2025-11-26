@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <algorithm>
 
+
 Nivel3::Nivel3(QWidget *parent) : NivelBase(parent)
     , velocidadScroll(3.0f)
     , distanciaRecorrida(0)
@@ -21,6 +22,15 @@ Nivel3::Nivel3(QWidget *parent) : NivelBase(parent)
     , tiempoAnimacion(0)
 {
     setFocusPolicy(Qt::StrongFocus);
+
+    // INICIALIZAR MILESTONES - puedes ajustar estos valores
+    milestonesObstaculos = {
+        {0.0f, 1},      // Desde el inicio: obstacle1 disponible
+        {500.0f, 3},    // A 500px: agregar obstacle3
+        {1000.0f, 4},   // A 1000px: agregar obstacle4
+        {2000.0f, 2}    // A 2000px: agregar obstacle2 (el más difícil)
+    };
+
     setupNivel();
 }
 
@@ -45,8 +55,8 @@ void Nivel3::setupNivel()
     jugadorN3 = new JugadorNivel3();
     jugador = jugadorN3;
 
-    // Establecer posición inicial del jugador
-    jugadorN3->setPosicion(QPointF(100, 400));
+    // RESTAURAR: Posición original pero un poco más baja
+    jugadorN3->setPosicion(QPointF(100, 450)); // Cambiado de 400 a 450 (solo 50px más abajo)
 
     posicionCamara = QPointF(0, 0);
     obstaculos.clear();
@@ -155,6 +165,32 @@ void Nivel3::actualizarCamaraAutoScroll()
     distanciaRecorrida += velocidadScroll;
 }
 
+QList<int> Nivel3::getObstaculosDisponibles() {
+    QList<int> disponibles = {1}; // obstacle1 siempre disponible
+
+    for (const auto& milestone : milestonesObstaculos) {
+        if (distanciaRecorrida >= milestone.first) {
+            if (!disponibles.contains(milestone.second)) {
+                disponibles.append(milestone.second);
+            }
+        }
+    }
+
+    qDebug() << "📊 Distancia:" << distanciaRecorrida
+             << "Obstáculos disponibles:" << disponibles;
+    return disponibles;
+}
+
+int Nivel3::determinarTipoObstaculo(const QRectF& obstaculo)
+{
+    // Usar posición X como semilla para variedad
+    static QRandomGenerator* random = QRandomGenerator::global();
+    int semilla = static_cast<int>(obstaculo.x() + obstaculo.y());
+
+    // Generar tipo basado en la posición (siempre el mismo tipo para misma posición)
+    return (semilla % 4) + 1; // 1, 2, 3 o 4
+}
+
 void Nivel3::generarObstaculos()
 {
     QRandomGenerator* random = QRandomGenerator::global();
@@ -177,63 +213,149 @@ void Nivel3::generarObstaculos()
 
 void Nivel3::generarPatronObstaculos(int tipoPatron)
 {
+    QList<int> obstaculosDisponibles = getObstaculosDisponibles();
     float baseX = posicionCamara.x() + width() + 200;
+
+    // Verificar que los obstáculos del patrón estén disponibles
+    auto estaDisponible = [&](int tipo) {
+        return obstaculosDisponibles.contains(tipo);
+    };
+
+    // Función para obtener dimensiones de un tipo
+    auto obtenerDimensiones = [](int tipo) -> QPair<QSize, int> {
+        switch (tipo) {
+        case 1: return {QSize(64, 128), 30};  // obstacle1
+        case 2: return {QSize(192, 192), 40}; // obstacle2
+        case 3: return {QSize(64, 64), 15};   // obstacle3
+        case 4: return {QSize(128, 192), 35}; // obstacle4
+        default: return {QSize(64, 128), 30};
+        }
+    };
 
     switch (tipoPatron) {
     case 0: // Triple salto
-        obstaculos.append(QRectF(baseX, 520, 50, 25));
-        obstaculos.append(QRectF(baseX + 180, 520, 60, 25));
-        obstaculos.append(QRectF(baseX + 360, 520, 70, 25));
-        break;
+    {
+        int tipoUsar = estaDisponible(3) ? 3 : 1;
+        auto [dimensiones, ajuste] = obtenerDimensiones(tipoUsar);
+
+        float y = SUELO_Y - dimensiones.height() + ajuste;
+        obstaculos.append(QRectF(baseX, y, dimensiones.width(), dimensiones.height()));
+        obstaculos.append(QRectF(baseX + 180, y, dimensiones.width(), dimensiones.height()));
+        obstaculos.append(QRectF(baseX + 360, y, dimensiones.width(), dimensiones.height()));
+
+        tiposObstaculos.append(tipoUsar);
+        tiposObstaculos.append(tipoUsar);
+        tiposObstaculos.append(tipoUsar);
+    }
+    break;
 
     case 1: // Bajo-Alto-Bajo
-        obstaculos.append(QRectF(baseX, 520, 60, 25));
-        obstaculos.append(QRectF(baseX + 200, 450, 40, 80));
-        obstaculos.append(QRectF(baseX + 400, 520, 70, 25));
-        break;
+    {
+        int tipoBajo = estaDisponible(3) ? 3 : 1;
+        int tipoAlto = estaDisponible(4) ? 4 : (estaDisponible(1) ? 1 : 3);
+
+        auto [dimBajo, ajusteBajo] = obtenerDimensiones(tipoBajo);
+        auto [dimAlto, ajusteAlto] = obtenerDimensiones(tipoAlto);
+
+        float yBajo = SUELO_Y - dimBajo.height() + ajusteBajo;
+        float yAlto = SUELO_Y - dimAlto.height() + ajusteAlto;
+
+        obstaculos.append(QRectF(baseX, yBajo, dimBajo.width(), dimBajo.height()));
+        obstaculos.append(QRectF(baseX + 200, yAlto, dimAlto.width(), dimAlto.height()));
+        obstaculos.append(QRectF(baseX + 400, yBajo, dimBajo.width(), dimBajo.height()));
+
+        tiposObstaculos.append(tipoBajo);
+        tiposObstaculos.append(tipoAlto);
+        tiposObstaculos.append(tipoBajo);
+    }
+    break;
 
     case 2: // Salto largo
-        obstaculos.append(QRectF(baseX, 520, 150, 30));
-        break;
+    {
+        int tipoUsar = estaDisponible(2) ? 2 : (estaDisponible(4) ? 4 : 1);
+        auto [dimensiones, ajuste] = obtenerDimensiones(tipoUsar);
+
+        float y = SUELO_Y - dimensiones.height() + ajuste;
+        obstaculos.append(QRectF(baseX, y, dimensiones.width(), dimensiones.height()));
+        tiposObstaculos.append(tipoUsar);
+    }
+    break;
     }
 }
 
 void Nivel3::generarObstaculosAleatorios()
 {
     QRandomGenerator* random = QRandomGenerator::global();
+    QList<int> obstaculosDisponibles = getObstaculosDisponibles();
 
     const int DISTANCIA_MINIMA = 250;
     const int DISTANCIA_MAXIMA = 600;
 
-    int numObstaculos = random->bounded(1, 3);
+    // Aumentar cantidad de obstáculos según distancia
+    int numObstaculos = 1;
+    if (distanciaRecorrida > 1500) numObstaculos = random->bounded(1, 3);
+    if (distanciaRecorrida > 3000) numObstaculos = random->bounded(2, 4);
+
     float ultimaPosicionX = posicionCamara.x() + width() + 150;
 
     for (int i = 0; i < numObstaculos; i++) {
         int separacion = random->bounded(DISTANCIA_MINIMA, DISTANCIA_MAXIMA);
         float x = ultimaPosicionX + separacion;
 
-        int tipo = random->bounded(100);
-        float ancho, alto, y;
+        // Elegir solo de los obstáculos disponibles
+        int indexTipo = random->bounded(obstaculosDisponibles.size());
+        int tipoObstaculo = obstaculosDisponibles[indexTipo];
 
-        if (tipo < 50) {
-            y = 530 - 25;
-            ancho = random->bounded(40, 70);
-            alto = 25;
-        } else if (tipo < 80) {
-            y = 530 - 60;
-            ancho = random->bounded(50, 80);
-            alto = 60;
-        } else {
-            y = 530 - 100;
-            ancho = random->bounded(30, 50);
-            alto = 100;
+        // OBTENER DIMENSIONES REALES DEL SPRITE
+        QString spriteName;
+        QSize dimensionesSprite;
+        int ajusteY = 0;
+
+        switch (tipoObstaculo) {
+        case 1: // obstacle1: 64x128
+            spriteName = "obstacle1";
+            dimensionesSprite = QSize(64, 128);
+            ajusteY = 30;
+            break;
+        case 2: // obstacle2: 192x192
+            spriteName = "obstacle2";
+            dimensionesSprite = QSize(192, 192);
+            ajusteY = 40;
+            break;
+        case 3: // obstacle3: 64x64
+            spriteName = "obstacle3";
+            dimensionesSprite = QSize(64, 64);
+            ajusteY = 15;
+            break;
+        case 4: // obstacle4: 128x192
+            spriteName = "obstacle4";
+            dimensionesSprite = QSize(128, 192);
+            ajusteY = 35;
+            break;
+        default:
+            spriteName = "obstacle1";
+            dimensionesSprite = QSize(64, 128);
+            ajusteY = 30;
+            break;
         }
 
+        // USAR DIMENSIONES REALES PARA LA HITBOX
+        float ancho = dimensionesSprite.width();
+        float alto = dimensionesSprite.height();
+        float y = SUELO_Y - alto + ajusteY; // Ajustar posición Y
+
         obstaculos.append(QRectF(x, y, ancho, alto));
+        tiposObstaculos.append(tipoObstaculo);
         ultimaPosicionX = x + ancho + 50;
+
+        qDebug() << "🎯 Generado obstáculo tipo" << tipoObstaculo
+                 << "Hitbox:" << ancho << "x" << alto << "Pos Y:" << y;
     }
 
-    if (random->bounded(100) < 30) {
+    // Power-ups
+    int probPowerUp = 30;
+    if (distanciaRecorrida > 2000) probPowerUp = 20;
+    if (random->bounded(100) < probPowerUp) {
         float xPowerUp = ultimaPosicionX + 100;
         float yPowerUp = 450;
         powerUps.append(QRectF(xPowerUp, yPowerUp, 30, 30));
@@ -253,10 +375,11 @@ void Nivel3::verificarColisiones()
         QRectF obstaculo = obstaculos[i];
 
         if (areaJugador.intersects(obstaculo)) {
-            qDebug() << "💥 COLISIÓN!";
+            qDebug() << "💥 COLISIÓN con obstáculo tipo" << tiposObstaculos[i];
             jugadorN3->setVida(jugadorN3->getVida() - 1);
             AudioManager::getInstance().playPlayerHurt();
             obstaculos.removeAt(i);
+            tiposObstaculos.removeAt(i); // IMPORTANTE: Remover también el tipo
 
             if (jugadorN3->getVida() <= 0) {
                 juegoActivo = false;
@@ -270,6 +393,7 @@ void Nivel3::verificarColisiones()
     for (int i = obstaculos.size() - 1; i >= 0; i--) {
         if (obstaculos[i].right() < posicionCamara.x() - 200) {
             obstaculos.removeAt(i);
+            tiposObstaculos.removeAt(i); // IMPORTANTE: Remover también el tipo
         }
     }
 }
@@ -315,21 +439,14 @@ void Nivel3::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Fondo
-    painter.fillRect(rect(), QColor(100, 150, 255));
+    // Fondo del cielo
+    painter.fillRect(rect(), QColor(135, 206, 235));
 
-    // Suelo
-    painter.fillRect(0, 550, width(), height() - 550, QColor(100, 200, 100));
+    // Dibujar suelo con sprite
+    dibujarSueloConSprite(painter);
 
-    // Obstáculos
-    painter.setBrush(QBrush(QColor(150, 75, 0)));
-    painter.setPen(QPen(Qt::black, 2));
-    for (const QRectF& obstaculo : obstaculos) {
-        QRectF obstaculoVista = obstaculo.translated(-posicionCamara);
-        if (obstaculoVista.right() > 0 && obstaculoVista.left() < width()) {
-            painter.drawRect(obstaculoVista);
-        }
-    }
+    // Resto del código se mantiene igual...
+    dibujarObstaculosConSprites(painter);
 
     // Power-ups
     painter.setBrush(QBrush(QColor(255, 255, 0)));
@@ -354,8 +471,71 @@ void Nivel3::paintEvent(QPaintEvent *event)
     }
 }
 
+void Nivel3::dibujarSueloConSprite(QPainter &painter)
+{
+    QPixmap sueloSprite = SpriteManager::getInstance().getSprite("ground2");
+
+    if (!sueloSprite.isNull()) {
+        int sueloY = 550;
+
+        int anchoVista = width();
+        int repeticiones = (anchoVista / sueloSprite.width()) + 2;
+
+        for (int i = -1; i < repeticiones; i++) {
+            QRectF destino(i * sueloSprite.width() - fmod(posicionCamara.x(), sueloSprite.width()),
+                           sueloY,
+                           sueloSprite.width(),
+                           sueloSprite.height());
+            painter.drawPixmap(destino, sueloSprite, sueloSprite.rect());
+        }
+    } else {
+        painter.fillRect(0, 550, width(), height() - 550, QColor(100, 200, 100));
+    }
+}
+
+void Nivel3::dibujarObstaculosConSprites(QPainter &painter)
+{
+    for (int i = 0; i < obstaculos.size(); i++) {
+        QRectF obstaculo = obstaculos[i];
+        int tipoObstaculo = tiposObstaculos[i];
+
+        QRectF obstaculoVista = obstaculo.translated(-posicionCamara);
+
+        if (obstaculoVista.right() > 0 && obstaculoVista.left() < width()) {
+            QString spriteName;
+
+            switch (tipoObstaculo) {
+            case 1: spriteName = "obstacle1"; break;
+            case 2: spriteName = "obstacle2"; break;
+            case 3: spriteName = "obstacle3"; break;
+            case 4: spriteName = "obstacle4"; break;
+            default: spriteName = "obstacle1"; break;
+            }
+
+            QPixmap obstaculoSprite = SpriteManager::getInstance().getSprite(spriteName);
+
+            if (!obstaculoSprite.isNull()) {
+                // DIBUJAR DIRECTAMENTE - la hitbox ya coincide con el sprite
+                painter.drawPixmap(obstaculoVista, obstaculoSprite, obstaculoSprite.rect());
+
+                // DEBUG: Mostrar hitbox (puedes comentar esto)
+                painter.setBrush(Qt::NoBrush);
+                painter.setPen(QPen(Qt::red, 1, Qt::DashLine));
+                painter.drawRect(obstaculoVista);
+
+            } else {
+                // Fallback
+                painter.setBrush(QBrush(QColor(150, 75, 0)));
+                painter.setPen(QPen(Qt::black, 2));
+                painter.drawRect(obstaculoVista);
+            }
+        }
+    }
+}
+
 void Nivel3::dibujarJugador(QPainter &painter)
 {
+    // RESTAURAR: Usar la posición real del jugador como estaba originalmente
     float jugadorY = jugadorN3->getPosicion().y();
 
     QString spriteName;
@@ -363,7 +543,7 @@ void Nivel3::dibujarJugador(QPainter &painter)
     int frameWidth, frameHeight;
     QSize displaySize(80, 100); // Tamaño de visualización en pantalla
 
-    // Determinar qué sprite usar según el estado
+    // Determinar qué sprite usar según el estado (ORIGINAL)
     if (jugadorN3->estaSaltando) {
         spriteName = "player_move"; // Usar sprite de correr para salto
         frameWidth = 1152 / 6; // 192 pixels por frame
@@ -385,21 +565,18 @@ void Nivel3::dibujarJugador(QPainter &painter)
     QPixmap spriteSheet = SpriteManager::getInstance().getSprite(spriteName);
 
     if(!spriteSheet.isNull()) {
-        // Calcular frame rect basado en los tamaños reales
         QRect frameRect(frameIndex * frameWidth, 0, frameWidth, frameHeight);
         QPixmap frame = spriteSheet.copy(frameRect);
 
-        // Dibujar en posición fija en X (100) y Y variable
         QRectF displayRect(100 - displaySize.width()/2,
                            jugadorY - displaySize.height()/2,
                            displaySize.width(),
                            displaySize.height());
         painter.drawPixmap(displayRect, frame, frame.rect());
 
-        // Debug ocasional
         static int debugCounter = 0;
         if (debugCounter++ % 120 == 0) {
-            qDebug() << "🎨 Sprite:" << spriteName
+            qDebug() << " Sprite:" << spriteName
                      << "Frame:" << frameIndex
                      << "Pos Y:" << jugadorY
                      << "Estado - Saltando:" << jugadorN3->estaSaltando
@@ -407,12 +584,11 @@ void Nivel3::dibujarJugador(QPainter &painter)
         }
 
     } else {
-        // Fallback visual
         painter.setBrush(QBrush(QColor(0, 100, 200)));
         painter.setPen(QPen(Qt::white, 3));
         QRectF jugadorRect(80, jugadorY - 25, 40, 50);
         painter.drawRect(jugadorRect);
-        qDebug() << "❌ Sprite no encontrado:" << spriteName;
+        qDebug() << "Sprite no encontrado:" << spriteName;
     }
 }
 
@@ -439,9 +615,9 @@ void Nivel3::dibujarHUD(QPainter &painter)
     UIManager::getInstance().drawText(painter,
                                       QString("Distancia: %1m").arg((int)(distanciaRecorrida / 10)), 30, 75);
 
-    // Barra de tiempo - CORREGIDO: Usar posición absoluta
+    // Barra de tiempo - RESTAURAR RIBBON ROJO
     float progresoTiempo = tiempoRestante / tiempoObjetivo;
-    QPixmap ribbon = UIManager::getInstance().getRibbonRed();
+    QPixmap ribbon = UIManager::getInstance().getRibbonRed(); // RIBBON ROJO RESTAURADO
     if (!ribbon.isNull()) {
         // Escalar el ribbon al tamaño deseado
         QPixmap ribbonEscalado = ribbon.scaled(200, 30);
