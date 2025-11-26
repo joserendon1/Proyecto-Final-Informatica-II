@@ -9,52 +9,66 @@
 #include <algorithm>
 
 Nivel3::Nivel3(QWidget *parent) : NivelBase(parent)
+    , velocidadScroll(3.0f)
+    , distanciaRecorrida(0)
+    , tiempoObjetivo(60.0f)
+    , spawnRate(2.0f)
+    , tiempoDesdeUltimoSpawn(0)
     , jugadorN3(nullptr)
     , nivelCompletado(false)
     , juegoActivo(true)
-    , tiempoDesdeUltimoSpawn(0)
+    , frameAnimacion(0)
+    , tiempoAnimacion(0)
 {
+    setFocusPolicy(Qt::StrongFocus);
     setupNivel();
 }
 
 Nivel3::~Nivel3()
 {
-    if (timerJuego) {
-        timerJuego->stop();
-    }
 }
 
 void Nivel3::setupNivel()
 {
-    // Configuración específica del nivel 3
-    velocidadScroll = 2.0f;
-    distanciaRecorrida = 0;
-    tiempoObjetivo = 90.0f; // 1.5 minutos
-    spawnRate = 2.0f; // obstáculos cada 2 segundos
+    tamanoVista = QSize(800, 600);
+    setFixedSize(tamanoVista);
 
     nivelCompletado = false;
     juegoActivo = true;
     tiempoDesdeUltimoSpawn = 0;
+    frameAnimacion = 0;
+    tiempoAnimacion = 0;
 
-    // Crear jugador específico para nivel 3
+    // PRECARGAR SPRITES ANTES de crear el jugador
+    SpriteManager::getInstance().preloadGameSprites();
+
     jugadorN3 = new JugadorNivel3();
-    jugador = jugadorN3; // Asignar al puntero base
+    jugador = jugadorN3;
 
-    // Configurar cámara inicial
+    // Establecer posición inicial del jugador
+    jugadorN3->setPosicion(QPointF(100, 400));
+
     posicionCamara = QPointF(0, 0);
+    obstaculos.clear();
+    powerUps.clear();
 
-    // Generar obstáculos iniciales
-    generarObstaculos();
+    // Cargar recursos de audio
+    AudioManager::getInstance().loadSounds();
 
-    // Iniciar timer
+    if (timerJuego) {
+        timerJuego->start(16);
+    }
+
     timerNivel.start();
-
-    qDebug() << "🎮 Nivel 3 - Auto-scroller iniciado";
+    qDebug() << "🎮 Nivel 3 iniciado";
 }
 
 void Nivel3::iniciarNivel()
 {
-    NivelBase::iniciarNivel();
+    juegoActivo = true;
+    if (timerJuego && !timerJuego->isActive()) {
+        timerJuego->start(16);
+    }
     AudioManager::getInstance().playBackgroundMusic();
 }
 
@@ -74,19 +88,24 @@ void Nivel3::actualizarJuego(float deltaTime)
 {
     if (!juegoActivo) return;
 
-    // Actualizar scroll automático
-    actualizarCamaraAutoScroll();
+    // Actualizar física del jugador
+    jugadorN3->actualizar(deltaTime);
 
-    // Actualizar jugador
-    if (jugadorN3->estaSaltando) {
-        jugadorN3->tiempoSalto += deltaTime / 1000.0f;
-        if (jugadorN3->tiempoSalto > 0.5f) {
-            jugadorN3->estaSaltando = false;
-            jugadorN3->tiempoSalto = 0;
-        }
+    // DEBUG: Mostrar posición del jugador ocasionalmente
+    static int debugCounter = 0;
+    if (debugCounter++ % 60 == 0) {
+        qDebug() << "🎯 Jugador - Pos Y:" << jugadorN3->getPosicion().y()
+                 << "Saltando:" << jugadorN3->estaSaltando
+                 << "Agachado:" << jugadorN3->estaAgachado;
     }
 
-    // Generar obstáculos periódicamente
+    // Actualizar animación
+    actualizarAnimacion(deltaTime);
+
+    // Actualizar scroll
+    actualizarCamaraAutoScroll();
+
+    // Generar obstáculos
     tiempoDesdeUltimoSpawn += deltaTime;
     if (tiempoDesdeUltimoSpawn > spawnRate * 1000) {
         generarObstaculos();
@@ -96,88 +115,161 @@ void Nivel3::actualizarJuego(float deltaTime)
     // Verificar colisiones
     verificarColisiones();
 
-    // Verificar si se completó el nivel
+    // Completar nivel por tiempo
     if (timerNivel.elapsed() / 1000.0f >= tiempoObjetivo) {
         nivelCompletado = true;
         juegoActivo = false;
         emit levelCompleted();
         AudioManager::getInstance().playLevelUp();
     }
+
+    update();
+}
+
+void Nivel3::actualizarAnimacion(float deltaTime)
+{
+    tiempoAnimacion += deltaTime;
+
+    // Cambiar frame cada 100ms
+    if (tiempoAnimacion > 100) {
+        if (jugadorN3->estaSaltando || jugadorN3->estaAgachado) {
+            // Estados especiales: frame fijo
+            frameAnimacion = 0;
+        } else {
+            // Corriendo: 6 frames de animación
+            frameAnimacion = (frameAnimacion + 1) % 6;
+        }
+        tiempoAnimacion = 0;
+    }
 }
 
 void Nivel3::actualizarCamaraAutoScroll()
 {
-    // Movimiento automático de la cámara hacia la derecha
+    float dificultad = qMin(distanciaRecorrida / 3000.0f, 1.0f);
+
+    velocidadScroll = 2.5f + dificultad * 1.5f;
+
+    spawnRate = 2.5f - dificultad * 0.5f;
+
     posicionCamara.setX(posicionCamara.x() + velocidadScroll);
     distanciaRecorrida += velocidadScroll;
-
-    // El jugador se mantiene en una posición X fija (solo se mueve en Y)
-    jugadorN3->setPosicionX(100); // Usar setter en lugar de acceso directo
 }
 
 void Nivel3::generarObstaculos()
 {
     QRandomGenerator* random = QRandomGenerator::global();
 
-    // Generar entre 1 y 3 obstáculos
-    int numObstaculos = random->bounded(1, 4);
+    float dificultad = qMin(distanciaRecorrida / 3000.0f, 1.0f);
 
-    for (int i = 0; i < numObstaculos; i++) {
-        float x = posicionCamara.x() + tamanoVista.width() + random->bounded(100, 300);
-        float y = random->bounded(200, 500);
-        float ancho = random->bounded(30, 80);
-        float alto = random->bounded(30, 60);
+    bool usarPatron = random->bounded(100) < (20 + (int)(dificultad * 30));
 
-        obstaculos.append(QRectF(x, y, ancho, alto));
+    if (usarPatron && distanciaRecorrida > 800) {
+        int maxPatrones = dificultad > 0.7f ? 3 : 2;
+        int patron = random->bounded(maxPatrones);
+        generarPatronObstaculos(patron);
+        qDebug() << "🎯 Patrón de obstáculos:" << patron;
+    } else {
+        generarObstaculosAleatorios();
     }
 
-    // Ocasionalmente generar power-ups
-    if (random->bounded(100) < 20) {
-        float x = posicionCamara.x() + tamanoVista.width() + random->bounded(200, 400);
-        float y = random->bounded(200, 500);
-        powerUps.append(QRectF(x, y, 25, 25));
+    qDebug() << "🎯 Generados" << obstaculos.size() << "obstáculos";
+}
+
+void Nivel3::generarPatronObstaculos(int tipoPatron)
+{
+    float baseX = posicionCamara.x() + width() + 200;
+
+    switch (tipoPatron) {
+    case 0: // Triple salto
+        obstaculos.append(QRectF(baseX, 520, 50, 25));
+        obstaculos.append(QRectF(baseX + 180, 520, 60, 25));
+        obstaculos.append(QRectF(baseX + 360, 520, 70, 25));
+        break;
+
+    case 1: // Bajo-Alto-Bajo
+        obstaculos.append(QRectF(baseX, 520, 60, 25));
+        obstaculos.append(QRectF(baseX + 200, 450, 40, 80));
+        obstaculos.append(QRectF(baseX + 400, 520, 70, 25));
+        break;
+
+    case 2: // Salto largo
+        obstaculos.append(QRectF(baseX, 520, 150, 30));
+        break;
+    }
+}
+
+void Nivel3::generarObstaculosAleatorios()
+{
+    QRandomGenerator* random = QRandomGenerator::global();
+
+    const int DISTANCIA_MINIMA = 250;
+    const int DISTANCIA_MAXIMA = 600;
+
+    int numObstaculos = random->bounded(1, 3);
+    float ultimaPosicionX = posicionCamara.x() + width() + 150;
+
+    for (int i = 0; i < numObstaculos; i++) {
+        int separacion = random->bounded(DISTANCIA_MINIMA, DISTANCIA_MAXIMA);
+        float x = ultimaPosicionX + separacion;
+
+        int tipo = random->bounded(100);
+        float ancho, alto, y;
+
+        if (tipo < 50) {
+            y = 530 - 25;
+            ancho = random->bounded(40, 70);
+            alto = 25;
+        } else if (tipo < 80) {
+            y = 530 - 60;
+            ancho = random->bounded(50, 80);
+            alto = 60;
+        } else {
+            y = 530 - 100;
+            ancho = random->bounded(30, 50);
+            alto = 100;
+        }
+
+        obstaculos.append(QRectF(x, y, ancho, alto));
+        ultimaPosicionX = x + ancho + 50;
+    }
+
+    if (random->bounded(100) < 30) {
+        float xPowerUp = ultimaPosicionX + 100;
+        float yPowerUp = 450;
+        powerUps.append(QRectF(xPowerUp, yPowerUp, 30, 30));
     }
 }
 
 void Nivel3::verificarColisiones()
 {
-    QRectF areaJugador = jugadorN3->getAreaColision();
+    float jugadorMundoX = posicionCamara.x() + 100;
+    float jugadorMundoY = jugadorN3->getPosicion().y();
 
-    // Verificar colisión con obstáculos
+    QRectF areaJugador = jugadorN3->getAreaColision();
+    areaJugador.moveTo(jugadorMundoX - areaJugador.width()/2,
+                       jugadorMundoY - areaJugador.height()/2);
+
     for (int i = obstaculos.size() - 1; i >= 0; i--) {
-        if (areaJugador.intersects(obstaculos[i])) {
-            jugadorN3->setVida(jugadorN3->getVida() - 1); // Usar setter
+        QRectF obstaculo = obstaculos[i];
+
+        if (areaJugador.intersects(obstaculo)) {
+            qDebug() << "💥 COLISIÓN!";
+            jugadorN3->setVida(jugadorN3->getVida() - 1);
             AudioManager::getInstance().playPlayerHurt();
             obstaculos.removeAt(i);
 
             if (jugadorN3->getVida() <= 0) {
                 juegoActivo = false;
                 emit gameOver();
+                AudioManager::getInstance().playPlayerHurt();
             }
-        }
-    }
-
-    // Verificar colisión con power-ups
-    for (int i = powerUps.size() - 1; i >= 0; i--) {
-        if (areaJugador.intersects(powerUps[i])) {
-            float nuevaVida = std::min(jugadorN3->getVida() + 1.0f, 5.0f); // Usar std::min
-            jugadorN3->setVida(nuevaVida);
-            AudioManager::getInstance().playLevelUp();
-            powerUps.removeAt(i);
         }
     }
 
     // Limpiar obstáculos que ya pasaron
     for (int i = obstaculos.size() - 1; i >= 0; i--) {
-        if (obstaculos[i].right() < posicionCamara.x()) {
+        if (obstaculos[i].right() < posicionCamara.x() - 200) {
             obstaculos.removeAt(i);
-        }
-    }
-
-    // Limpiar power-ups que ya pasaron
-    for (int i = powerUps.size() - 1; i >= 0; i--) {
-        if (powerUps[i].right() < posicionCamara.x()) {
-            powerUps.removeAt(i);
         }
     }
 }
@@ -195,6 +287,7 @@ void Nivel3::keyPressEvent(QKeyEvent *event)
     case Qt::Key_S:
         if (!jugadorN3->estaSaltando) {
             jugadorN3->agacharse();
+            AudioManager::getInstance().playPlayerMove();
         }
         break;
     case Qt::Key_P:
@@ -222,24 +315,25 @@ void Nivel3::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Dibujar fondo
+    // Fondo
     painter.fillRect(rect(), QColor(100, 150, 255));
 
-    // Dibujar suelo
+    // Suelo
     painter.fillRect(0, 550, width(), height() - 550, QColor(100, 200, 100));
 
-    // Dibujar obstáculos
+    // Obstáculos
     painter.setBrush(QBrush(QColor(150, 75, 0)));
-    painter.setPen(Qt::NoPen);
+    painter.setPen(QPen(Qt::black, 2));
     for (const QRectF& obstaculo : obstaculos) {
         QRectF obstaculoVista = obstaculo.translated(-posicionCamara);
-        if (estaEnVista(obstaculoVista)) {
+        if (obstaculoVista.right() > 0 && obstaculoVista.left() < width()) {
             painter.drawRect(obstaculoVista);
         }
     }
 
-    // Dibujar power-ups
+    // Power-ups
     painter.setBrush(QBrush(QColor(255, 255, 0)));
+    painter.setPen(QPen(Qt::black, 2));
     for (const QRectF& powerUp : powerUps) {
         QRectF powerUpVista = powerUp.translated(-posicionCamara);
         if (estaEnVista(powerUpVista)) {
@@ -247,19 +341,78 @@ void Nivel3::paintEvent(QPaintEvent *event)
         }
     }
 
-    // Dibujar jugador
-    painter.setBrush(QBrush(QColor(0, 100, 200)));
-    QRectF jugadorRect = jugadorN3->getAreaColision().translated(-posicionCamara);
-    painter.drawRect(jugadorRect);
+    // Dibujar jugador con sprite
+    dibujarJugador(painter);
 
-    // Dibujar HUD
+    // HUD mejorado
     dibujarHUD(painter);
 
-    // Mensaje de nivel completado
     if (nivelCompletado) {
         painter.fillRect(rect(), QColor(0, 0, 0, 150));
         UIManager::getInstance().drawText(painter, "¡NIVEL COMPLETADO!",
                                           width()/2 - 150, height()/2, 2.0f);
+    }
+}
+
+void Nivel3::dibujarJugador(QPainter &painter)
+{
+    float jugadorY = jugadorN3->getPosicion().y();
+
+    QString spriteName;
+    int frameIndex = frameAnimacion;
+    int frameWidth, frameHeight;
+    QSize displaySize(80, 100); // Tamaño de visualización en pantalla
+
+    // Determinar qué sprite usar según el estado
+    if (jugadorN3->estaSaltando) {
+        spriteName = "player_move"; // Usar sprite de correr para salto
+        frameWidth = 1152 / 6; // 192 pixels por frame
+        frameHeight = 192;
+        frameIndex = 0; // Primer frame para salto
+    } else if (jugadorN3->estaAgachado) {
+        spriteName = "player_idle";
+        frameWidth = 1536 / 8; // 192 pixels por frame
+        frameHeight = 192;
+        displaySize = QSize(80, 70); // Más bajo cuando está agachado
+        frameIndex = 0; // Frame fijo para agachado
+    } else {
+        spriteName = "player_move"; // Animación de correr
+        frameWidth = 1152 / 6; // 192 pixels por frame
+        frameHeight = 192;
+        frameIndex = frameAnimacion % 6; // 6 frames de animación
+    }
+
+    QPixmap spriteSheet = SpriteManager::getInstance().getSprite(spriteName);
+
+    if(!spriteSheet.isNull()) {
+        // Calcular frame rect basado en los tamaños reales
+        QRect frameRect(frameIndex * frameWidth, 0, frameWidth, frameHeight);
+        QPixmap frame = spriteSheet.copy(frameRect);
+
+        // Dibujar en posición fija en X (100) y Y variable
+        QRectF displayRect(100 - displaySize.width()/2,
+                           jugadorY - displaySize.height()/2,
+                           displaySize.width(),
+                           displaySize.height());
+        painter.drawPixmap(displayRect, frame, frame.rect());
+
+        // Debug ocasional
+        static int debugCounter = 0;
+        if (debugCounter++ % 120 == 0) {
+            qDebug() << "🎨 Sprite:" << spriteName
+                     << "Frame:" << frameIndex
+                     << "Pos Y:" << jugadorY
+                     << "Estado - Saltando:" << jugadorN3->estaSaltando
+                     << "Agachado:" << jugadorN3->estaAgachado;
+        }
+
+    } else {
+        // Fallback visual
+        painter.setBrush(QBrush(QColor(0, 100, 200)));
+        painter.setPen(QPen(Qt::white, 3));
+        QRectF jugadorRect(80, jugadorY - 25, 40, 50);
+        painter.drawRect(jugadorRect);
+        qDebug() << "❌ Sprite no encontrado:" << spriteName;
     }
 }
 
@@ -268,20 +421,48 @@ void Nivel3::dibujarHUD(QPainter &painter)
     float tiempoRestante = tiempoObjetivo - (timerNivel.elapsed() / 1000.0f);
     if (tiempoRestante < 0) tiempoRestante = 0;
 
-    // Panel de información
-    painter.setBrush(QBrush(QColor(0, 0, 0, 150)));
-    painter.setPen(Qt::NoPen);
-    painter.drawRect(10, 10, 200, 80);
+    // Fondo del HUD con sprite - POSICIÓN ABSOLUTA
+    QPixmap hudBg = UIManager::getInstance().getHudPanel();
+    if (!hudBg.isNull()) {
+        painter.drawPixmap(10, 10, hudBg.scaled(200, 80));
+    } else {
+        painter.setBrush(QBrush(QColor(0, 0, 0, 150)));
+        painter.setPen(Qt::NoPen);
+        painter.drawRect(10, 10, 200, 80);
+    }
 
-    // Textos del HUD
+    // Información del HUD
     UIManager::getInstance().drawText(painter,
-                                      QString("Vidas: %1").arg((int)jugadorN3->getVida()), 20, 30);
+                                      QString("Vidas: %1").arg((int)jugadorN3->getVida()), 30, 35);
     UIManager::getInstance().drawText(painter,
-                                      QString("Tiempo: %1s").arg((int)tiempoRestante), 20, 50);
+                                      QString("Tiempo: %1s").arg((int)tiempoRestante), 30, 55);
     UIManager::getInstance().drawText(painter,
-                                      QString("Distancia: %1m").arg((int)(distanciaRecorrida / 10)), 20, 70);
+                                      QString("Distancia: %1m").arg((int)(distanciaRecorrida / 10)), 30, 75);
 
-    // Instrucciones
+    // Barra de tiempo - CORREGIDO: Usar posición absoluta
+    float progresoTiempo = tiempoRestante / tiempoObjetivo;
+    QPixmap ribbon = UIManager::getInstance().getRibbonRed();
+    if (!ribbon.isNull()) {
+        // Escalar el ribbon al tamaño deseado
+        QPixmap ribbonEscalado = ribbon.scaled(200, 30);
+
+        // Calcular el ancho visible basado en el progreso
+        int anchoVisible = static_cast<int>(200 * progresoTiempo);
+
+        if (anchoVisible > 0) {
+            // Crear una versión recortada
+            QPixmap ribbonRecortado = ribbonEscalado.copy(0, 0, anchoVisible, 30);
+            painter.drawPixmap(220, 15, ribbonRecortado);
+        }
+    } else {
+        // Fallback: barra de progreso simple
+        painter.setBrush(QBrush(QColor(255, 0, 0, 180)));
+        painter.setPen(Qt::NoPen);
+        painter.drawRect(220, 15, static_cast<int>(200 * progresoTiempo), 20);
+    }
+
+    // Controles en la parte inferior - POSICIÓN ABSOLUTA
     UIManager::getInstance().drawText(painter,
-                                      "ESPACIO: Saltar   S: Agacharse", width() - 300, height() - 20);
+                                      "ESPACIO: Saltar   S: Agacharse",
+                                      width()/2 - 150, height() - 30);
 }

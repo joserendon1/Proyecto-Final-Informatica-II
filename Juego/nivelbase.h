@@ -15,11 +15,10 @@ public:
     explicit NivelBase(QWidget *parent = nullptr);
     virtual ~NivelBase();
 
-    // Métodos virtuales que pueden ser sobrescritos por niveles específicos
     virtual void iniciarNivel();
     virtual void pausarNivel();
     virtual void reanudarNivel();
-    virtual void actualizarJuego(float deltaTime) = 0; // Puro - debe implementarse
+    virtual void actualizarJuego(float deltaTime) = 0; // Solo esta declaración
 
     // Métodos comunes para todos los niveles
     void actualizarCamara();
@@ -41,7 +40,6 @@ signals:
     void playerLevelUp();
 
 protected:
-    // Métodos para manejo de input
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
 
@@ -56,6 +54,9 @@ protected:
 
     // Estado del input
     std::vector<bool> teclas;
+
+private slots:
+    void onTimerTimeout(); // Nuevo slot privado
 
 private:
     void setupNivelBase();

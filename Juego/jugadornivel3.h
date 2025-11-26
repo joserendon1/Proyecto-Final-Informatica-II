@@ -25,7 +25,7 @@ public:
     void saltar();
     void agacharse();
     void levantarse();
-    void moverVertical(float direccion); // Para movimiento vertical suave
+    void moverVertical(float direccion);
 
     // Override de funciones base
     QRectF getAreaColision() const override;
@@ -33,6 +33,7 @@ public:
     // Estados específicos del nivel 3
     bool estaSaltando;
     bool estaAgachado;
+    bool estaEnSuelo() const;
     float tiempoSalto;
     float velocidadVertical;
 

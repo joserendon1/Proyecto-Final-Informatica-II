@@ -5,17 +5,11 @@
 
 NivelBase::NivelBase(QWidget *parent) : QWidget(parent)
 {
-    // Inicializar pointers
     jugador = nullptr;
     mapa = nullptr;
     timerJuego = nullptr;
-
-    // Configuración base de la vista
     tamanoVista = QSize(1024, 768);
-
-    // Inicializar teclas
     teclas.resize(4, false);
-
     setupNivelBase();
 }
 
@@ -37,27 +31,24 @@ void NivelBase::setupNivelBase()
 {
     setFixedSize(tamanoVista);
     setFocusPolicy(Qt::StrongFocus);
-
-    // Crear mapa base
     mapa = new Mapa(this);
-
-    // Timer común
     setupTimer();
-
     tiempoUltimoFrame = QDateTime::currentMSecsSinceEpoch();
 }
 
 void NivelBase::setupTimer()
 {
     timerJuego = new QTimer(this);
-    connect(timerJuego, &QTimer::timeout, this, [this]() {
-        qint64 tiempoActual = QDateTime::currentMSecsSinceEpoch();
-        float deltaTime = tiempoActual - tiempoUltimoFrame;
-        tiempoUltimoFrame = tiempoActual;
+    connect(timerJuego, &QTimer::timeout, this, &NivelBase::onTimerTimeout);
+}
 
-        this->actualizarJuego(deltaTime);
-        this->update();
-    });
+void NivelBase::onTimerTimeout()
+{
+    qint64 tiempoActual = QDateTime::currentMSecsSinceEpoch();
+    float deltaTime = tiempoActual - tiempoUltimoFrame;
+    tiempoUltimoFrame = tiempoActual;
+    actualizarJuego(deltaTime);
+    update();
 }
 
 void NivelBase::actualizarCamara()

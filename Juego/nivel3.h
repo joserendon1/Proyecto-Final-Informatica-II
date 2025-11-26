@@ -29,9 +29,13 @@ private slots:
 private:
     void setupNivel();
     void generarObstaculos();
+    void generarPatronObstaculos(int tipoPatron);
+    void generarObstaculosAleatorios();
     void verificarColisiones();
     void actualizarCamaraAutoScroll();
+    void actualizarAnimacion(float deltaTime);
     void dibujarHUD(QPainter &painter);
+    void dibujarJugador(QPainter &painter);
 
     // Propiedades específicas del nivel 3
     float velocidadScroll;
@@ -44,6 +48,10 @@ private:
     float tiempoObjetivo;
     float spawnRate;
     float tiempoDesdeUltimoSpawn;
+
+    // Animación
+    int frameAnimacion;
+    float tiempoAnimacion;
 
     // Jugador específico para nivel 3
     JugadorNivel3* jugadorN3;
