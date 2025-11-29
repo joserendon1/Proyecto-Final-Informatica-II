@@ -2,7 +2,6 @@
 #define JUGADORNIVEL2_H
 
 #include "jugadorbase.h"
-#include "torre.h"
 #include <QList>
 
 class JugadorNivel2 : public JugadorBase
@@ -19,30 +18,20 @@ public:
     // Implementación de métodos virtuales de armas
     const QList<Arma*>& getArmas() const override;
     bool tieneArma(Arma::Tipo tipo) const override;
-    void anadirArmaNueva(Arma::Tipo tipoArma) override;
+    void anadirArmaNueva(Arma::Tipo tipoArma) override; // Asegúrate de que esté declarado
 
-    // Métodos específicos de JugadorNivel2
-    bool construirTorre(Torre::Tipo tipo, const QPointF& posicion);
-    void mejorarTorre(Torre* torre);
-    void venderTorre(Torre* torre);
-    Torre* getTorreEnPosicion(const QPointF& posicion) const;
-
-    // Getters para recursos
-    int getRecursos() const { return recursos; }
-    void agregarRecursos(int cantidad) { recursos += cantidad; }
-    bool gastarRecursos(int cantidad);
-
-    // Override de métodos de JugadorBase
+    // Métodos específicos del nuevo nivel 2
+    void moverDerecha();
+    void moverIzquierda();
     QRectF getAreaColision() const override;
 
-    // Getter específico para torres
-    const QList<Torre*>& getTorres() const { return torres; }
+    // Getters
+    float getVelocidadMovimiento() const { return velocidadMovimientoHorizontal; }
 
 private:
-    QList<Torre*> torres;
-    mutable QList<Arma*> armasCache; // Cache para compatibilidad
-    int recursos = 100;
-    QPointF posicionBase;
+    float velocidadMovimientoHorizontal = 5.0f;
+    int limiteIzquierdo = 50;
+    int limiteDerecho = 974; // 1024 - 50
 };
 
 #endif // JUGADORNIVEL2_H

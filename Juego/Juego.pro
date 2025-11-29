@@ -27,7 +27,6 @@ SOURCES += \
     nivel3.cpp \
     nivelbase.cpp \
     spritemanager.cpp \
-    torre.cpp \
     uimanager.cpp
 
 HEADERS += \
@@ -48,7 +47,6 @@ HEADERS += \
     nivel3.h \
     nivelbase.h \
     spritemanager.h \
-    torre.h \
     uimanager.h
 
 FORMS += \

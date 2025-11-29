@@ -1,93 +1,37 @@
 #include "nivel2.h"
-#include "enemigo.h"
 #include "audiomanager.h"
 #include "spritemanager.h"
 #include "uimanager.h"
 #include <QPainter>
-#include <QPainterPath>
-#include <QMouseEvent>
 #include <QKeyEvent>
 #include <QTimer>
 #include <QDebug>
-#include <QtMath>
 #include <QRandomGenerator>
 
 Nivel2::Nivel2(QWidget *parent) : NivelBase(parent)
 {
     jugador = new JugadorNivel2();
+    timerGeneracionObstaculos = new QTimer(this);
 
-    timerOleadas = new QTimer(this);
-    timerRecursos = new QTimer(this);
-
-    timerJuego->setInterval(16); // ~60 FPS
-
-    connect(timerOleadas, &QTimer::timeout, this, &Nivel2::generarOleada);
-    connect(timerRecursos, &QTimer::timeout, this, &Nivel2::generarRecursos);
-
-    inicializarRutas();
+    timerJuego->setInterval(16);
+    connect(timerGeneracionObstaculos, &QTimer::timeout, this, &Nivel2::generarObstaculo);
 
     tiempoTranscurrido = 0;
-    tiempoObjetivo = 180; // 3 minutos
-    numeroOleada = 1;
-    recursosGenerados = 0;
-    modoConstruccion = true;
-    torreSeleccionada = nullptr;
+    tiempoObjetivo = 90;
 
-    qDebug() << "Nivel 2 inicializado - Sistema de torres defensivas";
+    qDebug() << "Nivel 2 inicializado - Esquiva obstáculos";
 }
 
 Nivel2::~Nivel2()
 {
-    for(Enemigo* enemigo : enemigos) {
-        delete enemigo;
-    }
-    enemigos.clear();
+    obstaculos.clear();
 
-    if (timerOleadas) {
-        timerOleadas->stop();
-    }
-    if (timerRecursos) {
-        timerRecursos->stop();
+    if (timerGeneracionObstaculos) {
+        timerGeneracionObstaculos->stop();
+        delete timerGeneracionObstaculos;
     }
 
-    qDebug() << "Nivel 2 destruido - recursos limpiados";
-}
-
-void Nivel2::inicializarRutas()
-{
-    rutasEnemigas.clear();
-
-    // Ruta 1: Desde la izquierda hacia el castillo
-    QList<QPointF> ruta1;
-    ruta1.append(QPointF(-50, 200));
-    ruta1.append(QPointF(150, 200));
-    ruta1.append(QPointF(300, 350));
-    ruta1.append(QPointF(512, 384)); // Centro del castillo
-    rutasEnemigas.append(ruta1);
-
-    // Ruta 2: Desde la derecha hacia el castillo
-    QList<QPointF> ruta2;
-    ruta2.append(QPointF(1074, 300));
-    ruta2.append(QPointF(874, 300));
-    ruta2.append(QPointF(724, 450));
-    ruta2.append(QPointF(512, 384)); // Centro del castillo
-    rutasEnemigas.append(ruta2);
-
-    // Ruta 3: Desde abajo hacia el castillo
-    QList<QPointF> ruta3;
-    ruta3.append(QPointF(400, 818));
-    ruta3.append(QPointF(400, 618));
-    ruta3.append(QPointF(512, 500));
-    ruta3.append(QPointF(512, 384)); // Centro del castillo
-    rutasEnemigas.append(ruta3);
-
-    // Ruta 4: Desde arriba hacia el castillo
-    QList<QPointF> ruta4;
-    ruta4.append(QPointF(600, -50));
-    ruta4.append(QPointF(600, 150));
-    ruta4.append(QPointF(512, 250));
-    ruta4.append(QPointF(512, 384)); // Centro del castillo
-    rutasEnemigas.append(ruta4);
+    qDebug() << "Nivel 2 destruido";
 }
 
 void Nivel2::iniciarNivel()
@@ -95,43 +39,37 @@ void Nivel2::iniciarNivel()
     NivelBase::iniciarNivel();
 
     AudioManager::getInstance().stopBackgroundMusic();
+    timerGeneracionObstaculos->start(frecuenciaGeneracion);
 
-    timerOleadas->start(10000);
-    timerRecursos->start(5000);
+    // Limpiar obstáculos existentes y resetear estado
+    obstaculos.clear();
+    obstaculosEsquivados = 0;
+    tiempoTranscurrido = 0;
 
-    AudioManager::getInstance().playBackgroundMusic();
-
-    QTimer::singleShot(1000, this, &Nivel2::generarOleada);
-
-    qDebug() << "Nivel 2 iniciado - Modo construcción activado, audio configurado";
+    qDebug() << "Nivel 2 iniciado - Esquiva obstáculos por 90 segundos";
     update();
 }
 
 void Nivel2::pausarNivel()
 {
-    NivelBase::pausarNivel(); // Llamar al método base
-    timerOleadas->stop();
-    timerRecursos->stop();
-
+    NivelBase::pausarNivel();
+    timerGeneracionObstaculos->stop();
     update();
 }
 
 void Nivel2::reanudarNivel()
 {
-    NivelBase::reanudarNivel(); // Llamar al método base
-    timerOleadas->start();
-    timerRecursos->start();
-
+    NivelBase::reanudarNivel();
+    timerGeneracionObstaculos->start();
     update();
 }
 
 void Nivel2::actualizarJuego(float deltaTime)
 {
-    // Verificar si el juego está pausado verificando si el timer está activo
     if (!timerJuego->isActive()) return;
 
-    // Actualizar tiempo transcurrido
-    tiempoTranscurrido += deltaTime / 1000.0f; // Convertir a segundos
+    // Actualizar tiempo
+    tiempoTranscurrido += deltaTime / 1000.0f;
 
     // Verificar victoria
     if (tiempoTranscurrido >= tiempoObjetivo) {
@@ -140,29 +78,30 @@ void Nivel2::actualizarJuego(float deltaTime)
         return;
     }
 
-    // Actualizar jugador (gestión de torres)
+    // Actualizar jugador
     jugador->actualizar(deltaTime);
 
-    // Actualizar enemigos - seguir al castillo
-    for (Enemigo* enemigo : enemigos) {
-        if (enemigo->estaViva()) {
-            // Hacer que el enemigo siga al castillo (posición fija)
-            QPointF posicionCastillo(512, 384);
-            enemigo->seguirJugador(posicionCastillo);
-            enemigo->actualizar(deltaTime);
+    // Actualizar obstáculos (mover hacia abajo)
+    for (Obstaculo& obstaculo : obstaculos) {
+        if (obstaculo.activo) {
+            obstaculo.posicion.setY(obstaculo.posicion.y() + obstaculo.velocidad);
         }
     }
-
-    // Actualizar torres y procesar objetivos
-    actualizarTorres();
 
     // Procesar colisiones
     procesarColisiones();
 
-    // Limpiar enemigos muertos
-    limpiarEnemigosMuertos();
+    // Limpiar obstáculos que salieron de pantalla
+    limpiarObstaculos();
 
-    // Verificar derrota (si el castillo es destruido)
+    // Aumentar dificultad progresivamente
+    if (tiempoTranscurrido > 30 && frecuenciaGeneracion > 500) {
+        frecuenciaGeneracion = 1000 - (tiempoTranscurrido * 10);
+        if (frecuenciaGeneracion < 500) frecuenciaGeneracion = 500;
+        timerGeneracionObstaculos->setInterval(frecuenciaGeneracion);
+    }
+
+    // Verificar derrota
     if (jugador->getVida() <= 0) {
         emit gameOver();
         pausarNivel();
@@ -172,134 +111,61 @@ void Nivel2::actualizarJuego(float deltaTime)
     update();
 }
 
-void Nivel2::actualizarTorres()
+void Nivel2::generarObstaculo()
 {
-    JugadorNivel2* jugadorN2 = static_cast<JugadorNivel2*>(jugador);
-
-    // Para cada torre, encontrar enemigos en su rango
-    for (Torre* torre : jugadorN2->getTorres()) {
-        QList<Enemigo*> enemigosEnRango;
-
-        for (Enemigo* enemigo : enemigos) {
-            if (enemigo && enemigo->estaViva()) {
-                QPointF distancia = enemigo->getPosicion() - torre->getPosicion();
-                float magnitud = qSqrt(distancia.x() * distancia.x() + distancia.y() * distancia.y());
-
-                if (magnitud <= torre->getRango()) {
-                    enemigosEnRango.append(enemigo);
-                }
-            }
-        }
-
-        // Actualizar la torre
-        torre->actualizar(16); // deltaTime aproximado
-    }
-}
-
-void Nivel2::generarOleada()
-{
-    // Verificar si el juego está pausado
     if (!timerJuego->isActive()) return;
 
-    int cantidadEnemigos = 3 + (numeroOleada * 2);
-
-    qDebug() << "Generando oleada" << numeroOleada << "con" << cantidadEnemigos << "enemigos";
-
-    for (int i = 0; i < cantidadEnemigos; ++i) {
-        // Pequeño delay entre generación de enemigos
-        QTimer::singleShot(i * 500, this, [this]() {
-            generarEnemigo();
-        });
-    }
-
-    numeroOleada++;
-
-    // Aumentar dificultad progresivamente
-    int nuevoIntervalo = qMax(3000, 10000 - (numeroOleada * 500));
-    timerOleadas->setInterval(nuevoIntervalo);
-}
-
-void Nivel2::generarEnemigo()
-{
-    // Verificar si el juego está pausado
-    if (!timerJuego->isActive()) return;
-
-    // Seleccionar ruta aleatoria
-    int indiceRuta = QRandomGenerator::global()->bounded(rutasEnemigas.size());
-    QList<QPointF> ruta = rutasEnemigas[indiceRuta];
-
-    // Crear enemigo - tipo aleatorio con progresión de dificultad
-    int tipoEnemigo;
+    // Determinar tipo de obstáculo basado en probabilidad
+    int tipo;
+    float velocidad;
     int random = QRandomGenerator::global()->bounded(100);
 
-    if (random < 70) {
-        tipoEnemigo = 1; // Enemigo débil
+    if (random < 60) {
+        tipo = 1; // Normal
+        velocidad = 3.0f;
+    } else if (random < 85) {
+        tipo = 2; // Grande
+        velocidad = 2.5f;
     } else {
-        tipoEnemigo = 2; // Enemigo fuerte
+        tipo = 3; // Rápido
+        velocidad = 5.0f;
     }
 
-    // Aumentar dificultad según oleada
-    if (numeroOleada > 3) {
-        tipoEnemigo = 2; // Más enemigos fuertes después de la oleada 3
-    }
+    // Posición aleatoria en X
+    float posX = QRandomGenerator::global()->bounded(100, 924);
+    QPointF posicion(posX, -50);
 
-    Enemigo* nuevoEnemigo = new Enemigo(tipoEnemigo);
-    nuevoEnemigo->setPosicion(ruta.first());
-
-    enemigos.append(nuevoEnemigo);
-
-    qDebug() << "Enemigo generado en ruta" << indiceRuta << "tipo:" << tipoEnemigo;
-}
-
-void Nivel2::generarRecursos()
-{
-    // Verificar si el juego está pausado
-    if (!timerJuego->isActive()) return;
-
-    int recursosBase = 10 + (numeroOleada * 2);
-    JugadorNivel2* jugadorN2 = static_cast<JugadorNivel2*>(jugador);
-    jugadorN2->agregarRecursos(recursosBase);
-    recursosGenerados += recursosBase;
-
-    qDebug() << "Recursos generados:" << recursosBase << "Total del nivel:" << recursosGenerados;
+    // Crear obstáculo directamente en la lista
+    obstaculos.append(Obstaculo(posicion, tipo, velocidad));
 }
 
 void Nivel2::procesarColisiones()
 {
-    JugadorNivel2* jugadorN2 = static_cast<JugadorNivel2*>(jugador);
-
-    // Colisión entre enemigos y castillo
-    QRectF areaCastillo(412, 284, 200, 200); // Área del castillo
-
-    for (Enemigo* enemigo : enemigos) {
-        if (enemigo->estaViva() && areaCastillo.intersects(enemigo->getAreaColision())) {
-            // El enemigo llegó al castillo - causar daño
-            float danio = 10.0f; // Daño base
-            if (enemigo->getTipo() == 2) {
-                danio = 20.0f; // Enemigo fuerte hace más daño
-            }
-
+    for (Obstaculo& obstaculo : obstaculos) {
+        if (obstaculo.activo && obstaculo.getAreaColision().intersects(jugador->getAreaColision())) {
+            // Colisión detectada - aplicar daño
+            float danio = 25.0f;
             jugador->recibirDanio(danio);
 
-            // Eliminar enemigo
-            enemigo->recibirDanio(enemigo->getVida()); // Matar instantáneamente
+            // Desactivar obstáculo
+            obstaculo.activo = false;
 
-            qDebug() << "¡Castillo dañado! Vida restante:" << jugador->getVida();
+            qDebug() << "¡Colisión! Vida restante:" << jugador->getVida();
+
+            // Reproducir sonido de colisión si está disponible
+            AudioManager::getInstance().playSound("hit");
         }
     }
 }
 
-void Nivel2::limpiarEnemigosMuertos()
+void Nivel2::limpiarObstaculos()
 {
-    for (int i = enemigos.size() - 1; i >= 0; --i) {
-        if (!enemigos[i]->estaViva()) {
-            // Otorgar recursos por enemigo eliminado
-            JugadorNivel2* jugadorN2 = static_cast<JugadorNivel2*>(jugador);
-            int recursosGanados = enemigos[i]->getTipo() == 1 ? 5 : 10; // Más recursos por enemigo fuerte
-            jugadorN2->agregarRecursos(recursosGanados);
-
-            delete enemigos[i];
-            enemigos.removeAt(i);
+    for (int i = obstaculos.size() - 1; i >= 0; --i) {
+        if (!obstaculos[i].activo || obstaculos[i].estaFueraDePantalla()) {
+            if (obstaculos[i].estaFueraDePantalla() && obstaculos[i].activo) {
+                obstaculosEsquivados++;
+            }
+            obstaculos.removeAt(i);
         }
     }
 }
@@ -311,307 +177,156 @@ void Nivel2::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Dibujar fondo
-    painter.fillRect(rect(), QColor(34, 139, 34)); // Verde bosque
+    // Fondo azul cielo
+    painter.fillRect(rect(), QColor(135, 206, 235));
 
-    // Dibujar rutas
-    dibujarRutas(painter);
+    // Dibujar suelo
+    painter.setBrush(QColor(34, 139, 34)); // Verde pasto
+    painter.setPen(Qt::NoPen);
+    painter.drawRect(0, 700, width(), 68);
 
-    // Dibujar castillo
-    dibujarCastillo(painter);
+    // Dibujar jugador
+    dibujarJugador(painter);
 
-    // Dibujar torres
-    dibujarTorres(painter);
-
-    // Dibujar enemigos
-    for (Enemigo* enemigo : enemigos) {
-        if (enemigo->estaViva()) {
-            // Dibujar enemigo directamente aquí
-            QPointF pos = enemigo->getPosicion();
-            int tipo = enemigo->getTipo();
-
-            if (tipo == 1) {
-                // Enemigo débil - rojo
-                painter.setBrush(QColor(220, 20, 60));
-                painter.setPen(QPen(Qt::black, 1));
-                painter.drawEllipse(pos, 8, 8);
-            } else {
-                // Enemigo fuerte - morado
-                painter.setBrush(QColor(138, 43, 226));
-                painter.setPen(QPen(Qt::black, 1));
-                painter.drawEllipse(pos, 12, 12);
-            }
-
-            // Barra de vida (usando vida actual como porcentaje)
-            float vidaMaxima = (tipo == 1) ? 25.0f : 70.0f; // Valores del constructor
-            float vidaPorcentaje = enemigo->getVida() / vidaMaxima;
-            QRectF barraFondo(pos.x() - 10, pos.y() - 15, 20, 3);
-            QRectF barraVida(pos.x() - 10, pos.y() - 15, 20 * vidaPorcentaje, 3);
-
-            painter.setBrush(Qt::red);
-            painter.drawRect(barraFondo);
-            painter.setBrush(Qt::green);
-            painter.drawRect(barraVida);
-        }
-    }
-
-    // Dibujar interfaz de construcción si está activa
-    if (modoConstruccion) {
-        dibujarInterfazConstruccion(painter);
-    }
+    // Dibujar obstáculos
+    dibujarObstaculos(painter);
 
     // Dibujar HUD
     dibujarHUD(painter);
 }
 
-void Nivel2::dibujarRutas(QPainter &painter)
+void Nivel2::dibujarJugador(QPainter &painter)
 {
-    painter.setPen(QPen(QColor(139, 69, 19), 80)); // Marrón ancho para caminos
-    painter.setBrush(Qt::NoBrush);
+    QPointF pos = jugador->getPosicion();
 
-    for (const QList<QPointF>& ruta : rutasEnemigas) {
-        if (ruta.size() < 2) continue;
-
-        QPainterPath path;
-        path.moveTo(ruta[0]);
-
-        for (int i = 1; i < ruta.size(); ++i) {
-            path.lineTo(ruta[i]);
-        }
-
-        painter.drawPath(path);
-    }
-}
-
-void Nivel2::dibujarCastillo(QPainter &painter)
-{
-    // Base del castillo
-    painter.setBrush(QColor(101, 67, 33)); // Marrón
+    // Cuerpo del jugador (cuadrado azul)
+    painter.setBrush(QColor(0, 100, 255));
     painter.setPen(QPen(Qt::black, 2));
-    painter.drawRect(412, 284, 200, 200);
+    painter.drawRect(QRectF(pos.x() - 20, pos.y() - 20, 40, 40));
 
-    // Torres del castillo
-    painter.setBrush(QColor(128, 128, 128)); // Gris
-    painter.drawRect(402, 264, 20, 40);
-    painter.drawRect(602, 264, 20, 40);
-    painter.drawRect(412, 244, 60, 40);
-    painter.drawRect(552, 244, 60, 40);
+    // Ojos del jugador
+    painter.setBrush(Qt::white);
+    painter.drawEllipse(QPointF(pos.x() - 8, pos.y() - 5), 5, 5);
+    painter.drawEllipse(QPointF(pos.x() + 8, pos.y() - 5), 5, 5);
 
-    // Bandera
-    painter.setBrush(Qt::red);
-    painter.drawRect(507, 220, 10, 30);
+    // Pupilas
+    painter.setBrush(Qt::black);
+    painter.drawEllipse(QPointF(pos.x() - 8, pos.y() - 5), 2, 2);
+    painter.drawEllipse(QPointF(pos.x() + 8, pos.y() - 5), 2, 2);
 
-    // Puerta
-    painter.setBrush(QColor(101, 67, 33));
-    painter.drawRect(482, 384, 60, 100);
-    painter.setBrush(QColor(139, 69, 19));
-    painter.drawRect(492, 394, 40, 80);
+    // Sonrisa
+    painter.setPen(QPen(Qt::black, 2));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawArc(QRectF(pos.x() - 10, pos.y(), 20, 10), 0, -180 * 16);
 }
 
-void Nivel2::dibujarTorres(QPainter &painter)
+void Nivel2::dibujarObstaculos(QPainter &painter)
 {
-    JugadorNivel2* jugadorN2 = static_cast<JugadorNivel2*>(jugador);
+    for (const Obstaculo& obstaculo : obstaculos) {
+        if (obstaculo.activo) {
+            QPointF pos = obstaculo.posicion;
+            int tipo = obstaculo.tipo;
 
-    for (Torre* torre : jugadorN2->getTorres()) {
-        QPointF pos = torre->getPosicion();
-        float rango = torre->getRango();
+            // Color según tipo
+            switch(tipo) {
+            case 1: // Normal - Rojo
+                painter.setBrush(QColor(200, 0, 0));
+                break;
+            case 2: // Grande - Rojo oscuro
+                painter.setBrush(QColor(139, 0, 0));
+                break;
+            case 3: // Rápido - Rojo anaranjado
+                painter.setBrush(QColor(255, 69, 0));
+                break;
+            }
 
-        // Dibujar rango (semi-transparente)
-        painter.setBrush(QColor(255, 255, 255, 30));
-        painter.setPen(QPen(QColor(255, 255, 255, 80), 1));
-        painter.drawEllipse(pos, rango, rango);
+            painter.setPen(QPen(Qt::black, 2));
 
-        // Dibujar base de la torre
-        painter.setBrush(QColor(128, 128, 128));
-        painter.setPen(QPen(Qt::black, 2));
-        painter.drawEllipse(pos, 25, 25);
-
-        // Dibujar torre según tipo
-        switch(torre->getTipo()) {
-        case Arma::ARCO:
-            painter.setBrush(QColor(160, 82, 45)); // Marrón
-            break;
-        case Arma::BALLESTA:
-            painter.setBrush(QColor(139, 69, 19)); // Marrón oscuro
-            break;
-        case Arma::CATAPULTA:
-            painter.setBrush(QColor(101, 67, 33)); // Marrón muy oscuro
-            break;
-        case Arma::MAGICA:
-            painter.setBrush(QColor(75, 0, 130)); // Índigo
-            break;
-        default:
-            painter.setBrush(Qt::gray);
-            break;
+            // Dibujar según tipo
+            switch(tipo) {
+            case 1: // Normal - Círculo
+                painter.drawEllipse(pos, 15, 15);
+                // Detalle interior
+                painter.setBrush(QColor(255, 100, 100));
+                painter.drawEllipse(pos, 8, 8);
+                break;
+            case 2: // Grande - Cuadrado
+                painter.drawRect(QRectF(pos.x() - 25, pos.y() - 25, 50, 50));
+                // Detalle interior
+                painter.setBrush(QColor(200, 50, 50));
+                painter.drawRect(QRectF(pos.x() - 15, pos.y() - 15, 30, 30));
+                break;
+            case 3: // Rápido - Triángulo
+                QPolygonF triangulo;
+                triangulo << QPointF(pos.x(), pos.y() - 10)
+                          << QPointF(pos.x() - 10, pos.y() + 10)
+                          << QPointF(pos.x() + 10, pos.y() + 10);
+                painter.drawPolygon(triangulo);
+                break;
+            }
         }
-
-        painter.drawRect(pos.x() - 15, pos.y() - 15, 30, 30);
-
-        // Indicador de nivel
-        painter.setPen(Qt::white);
-        painter.drawText(pos.x() - 5, pos.y() + 5, QString::number(torre->getNivel()));
     }
-}
-
-void Nivel2::dibujarInterfazConstruccion(QPainter &painter)
-{
-    // Panel de información de construcción
-    painter.setBrush(QColor(0, 0, 0, 180));
-    painter.setPen(QPen(Qt::white, 2));
-    painter.drawRect(10, 10, 200, 150);
-
-    painter.setPen(Qt::white);
-    painter.drawText(20, 30, "MODO CONSTRUCCIÓN");
-    painter.drawText(20, 50, "Clic: Construir torre");
-    painter.drawText(20, 70, "1-4: Tipo de torre");
-    painter.drawText(20, 90, "C: Cambiar modo");
-    painter.drawText(20, 110, "Recursos: " + QString::number(static_cast<JugadorNivel2*>(jugador)->getRecursos()));
-
-    // Información de la torre seleccionada
-    QString tipoTorre;
-    switch(tipoTorreSeleccionado) {
-    case Arma::ARCO: tipoTorre = "Arco (40)"; break;
-    case Arma::BALLESTA: tipoTorre = "Ballesta (60)"; break;
-    case Arma::CATAPULTA: tipoTorre = "Catapulta (100)"; break;
-    case Arma::MAGICA: tipoTorre = "Mágica (80)"; break;
-    default: tipoTorre = "Desconocida"; break;
-    }
-
-    painter.drawText(20, 130, "Torre: " + tipoTorre);
 }
 
 void Nivel2::dibujarHUD(QPainter &painter)
 {
-    // Panel superior de información del juego
+    // Panel de información superior izquierdo
     painter.setBrush(QColor(0, 0, 0, 180));
     painter.setPen(QPen(Qt::white, 2));
-    painter.drawRect(rect().width() - 210, 10, 200, 100);
+    painter.drawRect(10, 10, 250, 80);
 
     painter.setPen(Qt::white);
-    painter.drawText(rect().width() - 200, 30, "Oleada: " + QString::number(numeroOleada));
-    painter.drawText(rect().width() - 200, 50, "Tiempo: " + QString::number((int)tiempoTranscurrido) + "/" + QString::number(tiempoObjetivo));
-    painter.drawText(rect().width() - 200, 70, "Vida Castillo: " + QString::number((int)jugador->getVida()));
-    painter.drawText(rect().width() - 200, 90, "Torres: " + QString::number(static_cast<JugadorNivel2*>(jugador)->getTorres().size()));
-}
+    painter.setFont(QFont("Arial", 12, QFont::Bold));
 
-void Nivel2::mousePressEvent(QMouseEvent *event)
-{
-    // Verificar si el juego está pausado
-    if (!timerJuego->isActive()) return;
+    painter.drawText(20, 30, "TIEMPO: " + QString::number((int)tiempoTranscurrido) + "/" + QString::number(tiempoObjetivo));
+    painter.drawText(20, 50, "VIDA: " + QString::number((int)jugador->getVida()));
+    painter.drawText(20, 70, "ESQUIVADOS: " + QString::number(obstaculosEsquivados));
 
-    if (modoConstruccion && event->button() == Qt::LeftButton) {
-        QPointF posicionMundo = event->pos();
-        procesarClickConstruccion(posicionMundo);
-    }
+    // Instrucciones superior derecho
+    painter.drawText(rect().width() - 200, 30, "CONTROLES:");
+    painter.drawText(rect().width() - 200, 50, "A - Mover Izquierda");
+    painter.drawText(rect().width() - 200, 70, "D - Mover Derecha");
 
-    NivelBase::mousePressEvent(event);
+    // Barra de progreso del tiempo
+    float progreso = tiempoTranscurrido / (float)tiempoObjetivo;
+    QRectF barraFondo(rect().center().x() - 100, 20, 200, 15);
+    QRectF barraProgreso(rect().center().x() - 100, 20, 200 * progreso, 15);
+
+    painter.setBrush(QColor(100, 100, 100));
+    painter.drawRect(barraFondo);
+    painter.setBrush(QColor(0, 255, 0));
+    painter.drawRect(barraProgreso);
+    painter.setPen(Qt::white);
+    painter.drawText(barraFondo, Qt::AlignCenter, "PROGRESO");
 }
 
 void Nivel2::keyPressEvent(QKeyEvent *event)
 {
-    // Verificar si el juego está pausado
     if (!timerJuego->isActive()) {
         NivelBase::keyPressEvent(event);
         return;
     }
 
+    std::vector<bool> teclas(4, false);
+
     switch(event->key()) {
-    case Qt::Key_1:
-        tipoTorreSeleccionado = Arma::ARCO;
-        qDebug() << "Torre seleccionada: Arco";
+    case Qt::Key_A:
+        teclas[0] = true; // Izquierda
         break;
-    case Qt::Key_2:
-        tipoTorreSeleccionado = Arma::BALLESTA;
-        qDebug() << "Torre seleccionada: Ballesta";
+    case Qt::Key_D:
+        teclas[1] = true; // Derecha
         break;
-    case Qt::Key_3:
-        tipoTorreSeleccionado = Arma::CATAPULTA;
-        qDebug() << "Torre seleccionada: Catapulta";
+    case Qt::Key_P:
+        pausarNivel();
         break;
-    case Qt::Key_4:
-        tipoTorreSeleccionado = Arma::MAGICA;
-        qDebug() << "Torre seleccionada: Mágica";
-        break;
-    case Qt::Key_C:
-        modoConstruccion = !modoConstruccion;
-        qDebug() << "Modo construcción:" << (modoConstruccion ? "ACTIVADO" : "DESACTIVADO");
-        break;
-    case Qt::Key_Space:
-        // Construir torre en posición predefinida (para testing)
-        if (modoConstruccion) {
-            QPointF posicion(200, 200);
-            if (esPosicionValidaParaTorre(posicion)) {
-                static_cast<JugadorNivel2*>(jugador)->construirTorre(tipoTorreSeleccionado, posicion);
-            }
-        }
+    case Qt::Key_R:
+        reanudarNivel();
         break;
     default:
         NivelBase::keyPressEvent(event);
-        break;
-    }
-
-    update();
-}
-
-void Nivel2::procesarClickConstruccion(const QPointF& posicionMundo)
-{
-    JugadorNivel2* jugadorN2 = static_cast<JugadorNivel2*>(jugador);
-
-    // Primero verificar si se hizo clic en una torre existente
-    Torre* torreExistente = jugadorN2->getTorreEnPosicion(posicionMundo);
-    if (torreExistente) {
-        // Si hay recursos, mejorar la torre
-        jugadorN2->mejorarTorre(torreExistente);
         return;
     }
 
-    // Si no, intentar construir nueva torre
-    if (esPosicionValidaParaTorre(posicionMundo)) {
-        bool exito = jugadorN2->construirTorre(tipoTorreSeleccionado, posicionMundo);
-        if (exito) {
-            qDebug() << "Torre construida exitosamente en" << posicionMundo;
-        } else {
-            qDebug() << "No hay recursos suficientes para construir torre";
-        }
-    } else {
-        qDebug() << "Posición inválida para construir torre";
-    }
-}
-
-bool Nivel2::esPosicionValidaParaTorre(const QPointF& posicion) const
-{
-    // Verificar que no esté demasiado cerca del castillo
-    QPointF centroCastillo(512, 384);
-    QPointF distanciaAlCastillo = posicion - centroCastillo;
-    float distancia = qSqrt(distanciaAlCastillo.x() * distanciaAlCastillo.x() +
-                            distanciaAlCastillo.y() * distanciaAlCastillo.y());
-
-    if (distancia < 200) {
-        return false; // Demasiado cerca del castillo
-    }
-
-    // Verificar que no esté en una ruta
-    for (const QList<QPointF>& ruta : rutasEnemigas) {
-        for (const QPointF& punto : ruta) {
-            QPointF distanciaARuta = posicion - punto;
-            float dist = qSqrt(distanciaARuta.x() * distanciaARuta.x() +
-                               distanciaARuta.y() * distanciaARuta.y());
-            if (dist < 60) { // Radio de la ruta + margen
-                return false; // Está en una ruta
-            }
-        }
-    }
-
-    // Verificar que no esté demasiado cerca de otra torre
-    const JugadorNivel2* jugadorN2 = static_cast<const JugadorNivel2*>(jugador);
-    for (const Torre* torre : jugadorN2->getTorres()) {
-        QPointF distanciaATorre = posicion - torre->getPosicion();
-        float dist = qSqrt(distanciaATorre.x() * distanciaATorre.x() +
-                           distanciaATorre.y() * distanciaATorre.y());
-        if (dist < 80) { // Distancia mínima entre torres
-            return false;
-        }
-    }
-
-    return true;
+    jugador->procesarInput(teclas);
+    update();
 }

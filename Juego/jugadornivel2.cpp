@@ -4,47 +4,38 @@
 
 JugadorNivel2::JugadorNivel2()
 {
-    vida = 200.0f;
+    vida = 100.0f;
     velocidad = 0.0f;
-    posicion = QPointF(400, 300);
-    posicionBase = posicion;
+    posicion = QPointF(512, 650); // Posición inicial abajo del área de juego
     ultimaDireccion = QPointF(0, -1);
     teclasPresionadas.resize(4, false);
 }
 
 JugadorNivel2::~JugadorNivel2()
 {
-    for(Torre* torre : torres) {
-        delete torre;
-    }
-    torres.clear();
+    // No hay torres que limpiar en este nuevo diseño
 }
 
-// Implementación corregida de getArmas()
 const QList<Arma*>& JugadorNivel2::getArmas() const
 {
-    armasCache.clear();
-    for(Torre* torre : torres) {
-        armasCache.append(static_cast<Arma*>(torre));
-    }
-    return armasCache;
+    static QList<Arma*> armasVacio;
+    return armasVacio;
 }
 
 void JugadorNivel2::actualizar(float deltaTime)
 {
-    for(Torre* torre : torres) {
-        torre->actualizar(deltaTime);
+    // Procesar input para movimiento horizontal
+    if (teclasPresionadas[0]) { // A - izquierda
+        moverIzquierda();
     }
-    activarArmas();
+    if (teclasPresionadas[1]) { // D - derecha
+        moverDerecha();
+    }
 }
 
 void JugadorNivel2::activarArmas()
 {
-    for(Torre* torre : torres) {
-        if(torre->puedeAtacar()) {
-            torre->activar(torre->getPosicion(), QPointF(0, -1));
-        }
-    }
+    // No hay armas en este nivel
 }
 
 void JugadorNivel2::procesarInput(const std::vector<bool>& teclas)
@@ -54,72 +45,20 @@ void JugadorNivel2::procesarInput(const std::vector<bool>& teclas)
     }
 }
 
-bool JugadorNivel2::construirTorre(Torre::Tipo tipo, const QPointF& posicion)
+void JugadorNivel2::moverDerecha()
 {
-    Torre* nuevaTorre = new Torre(tipo);
-
-    if(!gastarRecursos(nuevaTorre->getCosto())) {
-        delete nuevaTorre;
-        return false;
-    }
-
-    nuevaTorre->setPosicion(posicion);
-    torres.append(nuevaTorre);
-
-    qDebug() << "Torre construida:" << nuevaTorre->getNombre()
-             << "en posición:" << posicion
-             << "Recursos restantes:" << recursos;
-
-    return true;
-}
-
-void JugadorNivel2::mejorarTorre(Torre* torre)
-{
-    if(!torre) return;
-
-    int costoMejora = torre->getCostoMejora();
-    if(gastarRecursos(costoMejora)) {
-        torre->mejorar();
-        qDebug() << "Torre mejorada. Recursos restantes:" << recursos;
+    float nuevaX = posicion.x() + velocidadMovimientoHorizontal;
+    if (nuevaX <= limiteDerecho) {
+        posicion.setX(nuevaX);
     }
 }
 
-void JugadorNivel2::venderTorre(Torre* torre)
+void JugadorNivel2::moverIzquierda()
 {
-    if(!torre) return;
-
-    int reembolso = torre->getCostoVenta();
-    recursos += reembolso;
-    torres.removeOne(torre);
-    delete torre;
-
-    qDebug() << "Torre vendida. Reembolso:" << reembolso
-             << "Recursos totales:" << recursos;
-}
-
-Torre* JugadorNivel2::getTorreEnPosicion(const QPointF& posicion) const
-{
-    float radioDeteccion = 30.0f;
-
-    for(Torre* torre : torres) {
-        QPointF distancia = torre->getPosicion() - posicion;
-        float magnitud = qSqrt(distancia.x() * distancia.x() + distancia.y() * distancia.y());
-
-        if(magnitud <= radioDeteccion) {
-            return torre;
-        }
+    float nuevaX = posicion.x() - velocidadMovimientoHorizontal;
+    if (nuevaX >= limiteIzquierdo) {
+        posicion.setX(nuevaX);
     }
-
-    return nullptr;
-}
-
-bool JugadorNivel2::gastarRecursos(int cantidad)
-{
-    if(recursos >= cantidad) {
-        recursos -= cantidad;
-        return true;
-    }
-    return false;
 }
 
 bool JugadorNivel2::tieneArma(Arma::Tipo tipo) const
@@ -131,9 +70,10 @@ bool JugadorNivel2::tieneArma(Arma::Tipo tipo) const
 void JugadorNivel2::anadirArmaNueva(Arma::Tipo tipoArma)
 {
     Q_UNUSED(tipoArma);
+    // Implementación vacía - este nivel no usa armas
 }
 
 QRectF JugadorNivel2::getAreaColision() const
 {
-    return QRectF(posicion.x() - 40, posicion.y() - 40, 80, 80);
+    return QRectF(posicion.x() - 20, posicion.y() - 20, 40, 40);
 }
