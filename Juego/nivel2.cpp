@@ -1,104 +1,91 @@
 #include "nivel2.h"
-#include "audiomanager.h"
-#include "spritemanager.h"
-#include "uimanager.h"
 #include <QPainter>
 #include <QKeyEvent>
-#include <QTimer>
 #include <QDebug>
 #include <QRandomGenerator>
 
-Nivel2::Nivel2(QWidget *parent) : NivelBase(parent)
+Nivel2::Nivel2(QWidget *parent) : QWidget(parent)
 {
+    setFixedSize(1024, 768);
     jugador = new JugadorNivel2();
-    timerGeneracionObstaculos = new QTimer(this);
 
-    timerJuego->setInterval(16);
-    connect(timerGeneracionObstaculos, &QTimer::timeout, this, &Nivel2::generarObstaculo);
+    timerJuego = new QTimer(this);
+    timerJuego->setInterval(16); // ~60 FPS
 
-    tiempoTranscurrido = 0;
-    tiempoObjetivo = 90;
+    timerGeneracionBarriles = new QTimer(this);
+    timerGeneracionBarriles->setInterval(1000); // Generar barril cada segundo
 
-    qDebug() << "Nivel 2 inicializado - Esquiva obstáculos";
+    connect(timerJuego, &QTimer::timeout, this, &Nivel2::actualizarJuego);
+    connect(timerGeneracionBarriles, &QTimer::timeout, this, &Nivel2::generarBarril);
+
+    setFocusPolicy(Qt::StrongFocus);
 }
 
 Nivel2::~Nivel2()
 {
-    obstaculos.clear();
-
-    if (timerGeneracionObstaculos) {
-        timerGeneracionObstaculos->stop();
-        delete timerGeneracionObstaculos;
-    }
-
-    qDebug() << "Nivel 2 destruido";
+    delete jugador;
+    barriles.clear();
 }
 
 void Nivel2::iniciarNivel()
 {
-    NivelBase::iniciarNivel();
-
-    AudioManager::getInstance().stopBackgroundMusic();
-    timerGeneracionObstaculos->start(frecuenciaGeneracion);
-
-    // Limpiar obstáculos existentes y resetear estado
-    obstaculos.clear();
-    obstaculosEsquivados = 0;
+    barriles.clear();
     tiempoTranscurrido = 0;
+    barrilesEsquivados = 0;
 
-    qDebug() << "Nivel 2 iniciado - Esquiva obstáculos por 90 segundos";
+    timerJuego->start();
+    timerGeneracionBarriles->start();
+
     update();
 }
 
 void Nivel2::pausarNivel()
 {
-    NivelBase::pausarNivel();
-    timerGeneracionObstaculos->stop();
+    timerJuego->stop();
+    timerGeneracionBarriles->stop();
+    enPausa = true;
+    emit gamePaused(); // Emitir señal
     update();
 }
 
 void Nivel2::reanudarNivel()
 {
-    NivelBase::reanudarNivel();
-    timerGeneracionObstaculos->start();
+    timerJuego->start();
+    timerGeneracionBarriles->start();
+    enPausa = false;
+    emit gameResumed(); // Emitir señal
     update();
 }
 
-void Nivel2::actualizarJuego(float deltaTime)
+void Nivel2::actualizarJuego()
 {
-    if (!timerJuego->isActive()) return;
+    if (enPausa) return;
 
-    // Actualizar tiempo
-    tiempoTranscurrido += deltaTime / 1000.0f;
+    tiempoTranscurrido++;
 
-    // Verificar victoria
-    if (tiempoTranscurrido >= tiempoObjetivo) {
+    // Verificar victoria (90 segundos)
+    if (tiempoTranscurrido >= 90 * 60) { // 90 segundos * 60 updates/segundo
         emit levelCompleted();
         pausarNivel();
         return;
     }
 
-    // Actualizar jugador
-    jugador->actualizar(deltaTime);
-
-    // Actualizar obstáculos (mover hacia abajo)
-    for (Obstaculo& obstaculo : obstaculos) {
-        if (obstaculo.activo) {
-            obstaculo.posicion.setY(obstaculo.posicion.y() + obstaculo.velocidad);
+    // Actualizar posición de los barriles
+    for (Barril& barril : barriles) {
+        if (barril.activo) {
+            barril.posicion.setY(barril.posicion.y() + barril.velocidad);
         }
     }
 
-    // Procesar colisiones
     procesarColisiones();
-
-    // Limpiar obstáculos que salieron de pantalla
-    limpiarObstaculos();
+    limpiarBarriles();
 
     // Aumentar dificultad progresivamente
-    if (tiempoTranscurrido > 30 && frecuenciaGeneracion > 500) {
-        frecuenciaGeneracion = 1000 - (tiempoTranscurrido * 10);
-        if (frecuenciaGeneracion < 500) frecuenciaGeneracion = 500;
-        timerGeneracionObstaculos->setInterval(frecuenciaGeneracion);
+    if (tiempoTranscurrido > 30 * 60) { // Después de 30 segundos
+        timerGeneracionBarriles->setInterval(800);
+    }
+    if (tiempoTranscurrido > 60 * 60) { // Después de 60 segundos
+        timerGeneracionBarriles->setInterval(600);
     }
 
     // Verificar derrota
@@ -111,61 +98,42 @@ void Nivel2::actualizarJuego(float deltaTime)
     update();
 }
 
-void Nivel2::generarObstaculo()
+void Nivel2::generarBarril()
 {
-    if (!timerJuego->isActive()) return;
+    if (enPausa) return;
 
-    // Determinar tipo de obstáculo basado en probabilidad
-    int tipo;
-    float velocidad;
-    int random = QRandomGenerator::global()->bounded(100);
-
-    if (random < 60) {
-        tipo = 1; // Normal
-        velocidad = 3.0f;
-    } else if (random < 85) {
-        tipo = 2; // Grande
-        velocidad = 2.5f;
-    } else {
-        tipo = 3; // Rápido
-        velocidad = 5.0f;
-    }
-
-    // Posición aleatoria en X
+    // Posición aleatoria en X (evitando los bordes)
     float posX = QRandomGenerator::global()->bounded(100, 924);
     QPointF posicion(posX, -50);
 
-    // Crear obstáculo directamente en la lista
-    obstaculos.append(Obstaculo(posicion, tipo, velocidad));
+    // Velocidad aleatoria entre 3 y 6 (usamos int para evitar ambigüedad)
+    int velocidadInt = QRandomGenerator::global()->bounded(30, 61); // 3.0 a 6.0
+    float velocidad = velocidadInt / 10.0f;
+
+    barriles.append(Barril(posicion, velocidad));
 }
 
 void Nivel2::procesarColisiones()
 {
-    for (Obstaculo& obstaculo : obstaculos) {
-        if (obstaculo.activo && obstaculo.getAreaColision().intersects(jugador->getAreaColision())) {
-            // Colisión detectada - aplicar daño
-            float danio = 25.0f;
-            jugador->recibirDanio(danio);
-
-            // Desactivar obstáculo
-            obstaculo.activo = false;
+    for (Barril& barril : barriles) {
+        if (barril.activo && barril.getAreaColision().intersects(jugador->getAreaColision())) {
+            // Colisión detectada
+            jugador->recibirDanio(25.0f);
+            barril.activo = false;
 
             qDebug() << "¡Colisión! Vida restante:" << jugador->getVida();
-
-            // Reproducir sonido de colisión si está disponible
-            AudioManager::getInstance().playSound("hit");
         }
     }
 }
 
-void Nivel2::limpiarObstaculos()
+void Nivel2::limpiarBarriles()
 {
-    for (int i = obstaculos.size() - 1; i >= 0; --i) {
-        if (!obstaculos[i].activo || obstaculos[i].estaFueraDePantalla()) {
-            if (obstaculos[i].estaFueraDePantalla() && obstaculos[i].activo) {
-                obstaculosEsquivados++;
+    for (int i = barriles.size() - 1; i >= 0; --i) {
+        if (!barriles[i].activo || barriles[i].estaFueraDePantalla()) {
+            if (barriles[i].estaFueraDePantalla() && barriles[i].activo) {
+                barrilesEsquivados++;
             }
-            obstaculos.removeAt(i);
+            barriles.removeAt(i);
         }
     }
 }
@@ -181,96 +149,32 @@ void Nivel2::paintEvent(QPaintEvent *event)
     painter.fillRect(rect(), QColor(135, 206, 235));
 
     // Dibujar suelo
-    painter.setBrush(QColor(34, 139, 34)); // Verde pasto
+    painter.setBrush(QColor(34, 139, 34));
     painter.setPen(Qt::NoPen);
     painter.drawRect(0, 700, width(), 68);
 
-    // Dibujar jugador
-    dibujarJugador(painter);
-
-    // Dibujar obstáculos
-    dibujarObstaculos(painter);
-
-    // Dibujar HUD
-    dibujarHUD(painter);
-}
-
-void Nivel2::dibujarJugador(QPainter &painter)
-{
+    // Dibujar jugador (cuadrado azul)
     QPointF pos = jugador->getPosicion();
-
-    // Cuerpo del jugador (cuadrado azul)
     painter.setBrush(QColor(0, 100, 255));
     painter.setPen(QPen(Qt::black, 2));
     painter.drawRect(QRectF(pos.x() - 20, pos.y() - 20, 40, 40));
 
-    // Ojos del jugador
-    painter.setBrush(Qt::white);
-    painter.drawEllipse(QPointF(pos.x() - 8, pos.y() - 5), 5, 5);
-    painter.drawEllipse(QPointF(pos.x() + 8, pos.y() - 5), 5, 5);
-
-    // Pupilas
-    painter.setBrush(Qt::black);
-    painter.drawEllipse(QPointF(pos.x() - 8, pos.y() - 5), 2, 2);
-    painter.drawEllipse(QPointF(pos.x() + 8, pos.y() - 5), 2, 2);
-
-    // Sonrisa
-    painter.setPen(QPen(Qt::black, 2));
-    painter.setBrush(Qt::NoBrush);
-    painter.drawArc(QRectF(pos.x() - 10, pos.y(), 20, 10), 0, -180 * 16);
-}
-
-void Nivel2::dibujarObstaculos(QPainter &painter)
-{
-    for (const Obstaculo& obstaculo : obstaculos) {
-        if (obstaculo.activo) {
-            QPointF pos = obstaculo.posicion;
-            int tipo = obstaculo.tipo;
-
-            // Color según tipo
-            switch(tipo) {
-            case 1: // Normal - Rojo
-                painter.setBrush(QColor(200, 0, 0));
-                break;
-            case 2: // Grande - Rojo oscuro
-                painter.setBrush(QColor(139, 0, 0));
-                break;
-            case 3: // Rápido - Rojo anaranjado
-                painter.setBrush(QColor(255, 69, 0));
-                break;
-            }
-
+    // Dibujar barriles (círculos marrones)
+    for (const Barril& barril : barriles) {
+        if (barril.activo) {
+            QPointF pos = barril.posicion;
+            painter.setBrush(QColor(139, 69, 19)); // Marrón
             painter.setPen(QPen(Qt::black, 2));
+            painter.drawEllipse(pos, 15, 15);
 
-            // Dibujar según tipo
-            switch(tipo) {
-            case 1: // Normal - Círculo
-                painter.drawEllipse(pos, 15, 15);
-                // Detalle interior
-                painter.setBrush(QColor(255, 100, 100));
-                painter.drawEllipse(pos, 8, 8);
-                break;
-            case 2: // Grande - Cuadrado
-                painter.drawRect(QRectF(pos.x() - 25, pos.y() - 25, 50, 50));
-                // Detalle interior
-                painter.setBrush(QColor(200, 50, 50));
-                painter.drawRect(QRectF(pos.x() - 15, pos.y() - 15, 30, 30));
-                break;
-            case 3: // Rápido - Triángulo
-                QPolygonF triangulo;
-                triangulo << QPointF(pos.x(), pos.y() - 10)
-                          << QPointF(pos.x() - 10, pos.y() + 10)
-                          << QPointF(pos.x() + 10, pos.y() + 10);
-                painter.drawPolygon(triangulo);
-                break;
-            }
+            // Detalle del barril
+            painter.setPen(QPen(QColor(101, 67, 33), 2));
+            painter.drawLine(QPointF(pos.x() - 10, pos.y()), QPointF(pos.x() + 10, pos.y()));
+            painter.drawLine(QPointF(pos.x(), pos.y() - 10), QPointF(pos.x(), pos.y() + 10));
         }
     }
-}
 
-void Nivel2::dibujarHUD(QPainter &painter)
-{
-    // Panel de información superior izquierdo
+    // HUD (información del juego)
     painter.setBrush(QColor(0, 0, 0, 180));
     painter.setPen(QPen(Qt::white, 2));
     painter.drawRect(10, 10, 250, 80);
@@ -278,43 +182,36 @@ void Nivel2::dibujarHUD(QPainter &painter)
     painter.setPen(Qt::white);
     painter.setFont(QFont("Arial", 12, QFont::Bold));
 
-    painter.drawText(20, 30, "TIEMPO: " + QString::number((int)tiempoTranscurrido) + "/" + QString::number(tiempoObjetivo));
+    painter.drawText(20, 30, "TIEMPO: " + QString::number(tiempoTranscurrido / 60) + "/90");
     painter.drawText(20, 50, "VIDA: " + QString::number((int)jugador->getVida()));
-    painter.drawText(20, 70, "ESQUIVADOS: " + QString::number(obstaculosEsquivados));
+    painter.drawText(20, 70, "ESQUIVADOS: " + QString::number(barrilesEsquivados));
 
-    // Instrucciones superior derecho
+    // Instrucciones
     painter.drawText(rect().width() - 200, 30, "CONTROLES:");
-    painter.drawText(rect().width() - 200, 50, "A - Mover Izquierda");
-    painter.drawText(rect().width() - 200, 70, "D - Mover Derecha");
+    painter.drawText(rect().width() - 200, 50, "A - Izquierda");
+    painter.drawText(rect().width() - 200, 70, "D - Derecha");
+    painter.drawText(rect().width() - 200, 90, "P - Pausar");
+    painter.drawText(rect().width() - 200, 110, "R - Reanudar");
 
-    // Barra de progreso del tiempo
-    float progreso = tiempoTranscurrido / (float)tiempoObjetivo;
-    QRectF barraFondo(rect().center().x() - 100, 20, 200, 15);
-    QRectF barraProgreso(rect().center().x() - 100, 20, 200 * progreso, 15);
-
-    painter.setBrush(QColor(100, 100, 100));
-    painter.drawRect(barraFondo);
-    painter.setBrush(QColor(0, 255, 0));
-    painter.drawRect(barraProgreso);
-    painter.setPen(Qt::white);
-    painter.drawText(barraFondo, Qt::AlignCenter, "PROGRESO");
+    if (enPausa) {
+        painter.setBrush(QColor(0, 0, 0, 150));
+        painter.drawRect(rect());
+        painter.setPen(Qt::yellow);
+        painter.setFont(QFont("Arial", 36, QFont::Bold));
+        painter.drawText(rect(), Qt::AlignCenter, "PAUSA");
+    }
 }
 
 void Nivel2::keyPressEvent(QKeyEvent *event)
 {
-    if (!timerJuego->isActive()) {
-        NivelBase::keyPressEvent(event);
-        return;
-    }
-
     std::vector<bool> teclas(4, false);
 
     switch(event->key()) {
     case Qt::Key_A:
-        teclas[0] = true; // Izquierda
+        teclas[0] = true;
         break;
     case Qt::Key_D:
-        teclas[1] = true; // Derecha
+        teclas[1] = true;
         break;
     case Qt::Key_P:
         pausarNivel();
@@ -323,7 +220,7 @@ void Nivel2::keyPressEvent(QKeyEvent *event)
         reanudarNivel();
         break;
     default:
-        NivelBase::keyPressEvent(event);
+        QWidget::keyPressEvent(event);
         return;
     }
 

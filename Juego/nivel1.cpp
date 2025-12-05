@@ -15,11 +15,9 @@
 
 Nivel1::Nivel1(QWidget *parent) : NivelBase(parent)
 {
-    // La configuración base ya se hizo en NivelBase
 
     qDebug() << "Nivel1 - Vista 1024x768";
 
-    // PRIMERO cargar recursos
     SpriteManager::getInstance().preloadGameSprites();
     UIManager::getInstance().loadResources();
 

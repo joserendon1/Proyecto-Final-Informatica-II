@@ -25,7 +25,9 @@ public:
     void saltar();
     void agacharse();
     void levantarse();
-    void moverVertical(float direccion);
+    void cancelarSalto();      // Nueva función
+    void aumentarGravedad();   // Nueva función
+    void moverVertical(float direccion);  // AÑADIR ESTA LÍNEA
 
     // Override de funciones base
     QRectF getAreaColision() const override;
@@ -36,6 +38,7 @@ public:
     bool estaEnSuelo() const;
     float tiempoSalto;
     float velocidadVertical;
+    bool gravedadAumentada;    // Nuevo estado
 
     // Getters para acceder a miembros protegidos
     float getVida() const { return vida; }
@@ -48,7 +51,9 @@ private:
     // Configuración específica del nivel 3
     float alturaSalto;
     float duracionSalto;
-    float gravedad;
+    float gravedadNormal;      // Gravedad normal
+    float gravedadRapida;      // Gravedad rápida para caída
+    float gravedad;            // Gravedad actual
 
     // Lista de armas vacía (no se usan en nivel 3)
     QList<Arma*> armas;

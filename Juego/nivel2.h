@@ -1,12 +1,12 @@
 #ifndef NIVEL2_H
 #define NIVEL2_H
 
-#include "nivelbase.h"
-#include "jugadornivel2.h"
+#include <QWidget>
 #include <QTimer>
 #include <QList>
+#include "jugadornivel2.h"
 
-class Nivel2 : public NivelBase
+class Nivel2 : public QWidget
 {
     Q_OBJECT
 
@@ -14,38 +14,36 @@ public:
     explicit Nivel2(QWidget *parent = nullptr);
     ~Nivel2();
 
-    void actualizarJuego(float deltaTime) override;
-    void iniciarNivel() override;
-    void pausarNivel() override;
-    void reanudarNivel() override;
+    void iniciarNivel();
+    void pausarNivel();
+    void reanudarNivel();
+
+signals:
+    void gamePaused();
+    void gameResumed();
+    void gameOver();
+    void levelCompleted();
+    // Añadimos esta señal aunque no la uses actualmente
+    void playerLevelUp();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
-    void generarObstaculo();
+    void actualizarJuego();
+    void generarBarril();
 
 private:
-    // Estructura simple para obstáculos
-    struct Obstaculo {
+    struct Barril {
         QPointF posicion;
-        int tipo; // 1: Normal, 2: Grande, 3: Rápido
         float velocidad;
         bool activo;
 
-        Obstaculo(QPointF pos, int t, float vel)
-            : posicion(pos), tipo(t), velocidad(vel), activo(true) {}
+        Barril(QPointF pos, float vel) : posicion(pos), velocidad(vel), activo(true) {}
 
         QRectF getAreaColision() const {
-            float tamano;
-            switch(tipo) {
-            case 1: tamano = 15.0f; break; // Normal
-            case 2: tamano = 25.0f; break; // Grande
-            case 3: tamano = 10.0f; break; // Rápido
-            default: tamano = 15.0f;
-            }
-            return QRectF(posicion.x() - tamano, posicion.y() - tamano, tamano * 2, tamano * 2);
+            return QRectF(posicion.x() - 15, posicion.y() - 15, 30, 30);
         }
 
         bool estaFueraDePantalla() const {
@@ -54,18 +52,20 @@ private:
     };
 
     void procesarColisiones();
-    void limpiarObstaculos();
+    void limpiarBarriles();
     void dibujarJugador(QPainter &painter);
-    void dibujarObstaculos(QPainter &painter);
+    void dibujarBarriles(QPainter &painter);
     void dibujarHUD(QPainter &painter);
 
-    QTimer* timerGeneracionObstaculos;
-    QList<Obstaculo> obstaculos;
+    QTimer* timerJuego;
+    QTimer* timerGeneracionBarriles;
+    JugadorNivel2* jugador;
+    QList<Barril> barriles;
 
     int tiempoTranscurrido = 0;
     int tiempoObjetivo = 90;
-    int obstaculosEsquivados = 0;
-    float frecuenciaGeneracion = 1000.0f;
+    int barrilesEsquivados = 0;
+    bool enPausa = false;
 };
 
 #endif // NIVEL2_H

@@ -287,6 +287,7 @@ void MainWindow::onNewGame()
     QPushButton *nivel2Button = msgBox.addButton("Nivel 2 - Defensa", QMessageBox::ActionRole);
     QPushButton *nivel3Button = msgBox.addButton("Nivel 3 - Carrera", QMessageBox::ActionRole);
     QPushButton *cancelButton = msgBox.addButton("Cancelar", QMessageBox::RejectRole);
+    Q_UNUSED(cancelButton);
 
     msgBox.exec();
 

@@ -27,12 +27,13 @@ private slots:
     void actualizarJuego(float deltaTime) override;
 
 private:
-
     const int SUELO_Y = 550;
-    const int AJUSTE_OBSTACULO1 = 30;
-    const int AJUSTE_OBSTACULO2 = 40;
-    const int AJUSTE_OBSTACULO3 = 15;
-    const int AJUSTE_OBSTACULO4 = 35;
+    const int AJUSTE_OBSTACULO1 = 35;  // Ajuste para obstacle1 (alto)
+    const int AJUSTE_OBSTACULO3 = 35;  // Ajuste para obstacle3 (bajo)
+
+    // Constantes de separación
+    const int SEPARACION_MINIMA = 600;  // Más espacio entre obstáculos
+    const int SEPARACION_MAXIMA = 800;
 
     void setupNivel();
     void generarObstaculos();
@@ -45,13 +46,17 @@ private:
     void dibujarJugador(QPainter &painter);
     void dibujarSueloConSprite(QPainter &painter);
     void dibujarObstaculosConSprites(QPainter &painter);
-    int determinarTipoObstaculo(const QRectF& obstaculo);
+    QSize obtenerDimensionesSprite(int tipoObstaculo);
+    QSize obtenerDimensionesHitbox(int tipoObstaculo);
+    int obtenerAjusteY(int tipoObstaculo);
 
     // Propiedades específicas del nivel 3
     float velocidadScroll;
     float distanciaRecorrida;
     QElapsedTimer timerNivel;
-    QList<QRectF> obstaculos;
+    QList<QRectF> obstaculos;       // Hitboxes de colisión
+    QList<QRectF> spriteRects;      // Rectángulos de dibujo (más grandes)
+    QList<int> tiposObstaculos;
     QList<QRectF> powerUps;
 
     // Configuración
@@ -72,7 +77,6 @@ private:
 
     QList<QPair<float, int>> milestonesObstaculos;
     QList<int> getObstaculosDisponibles();
-    QList<int> tiposObstaculos;
 };
 
 #endif // NIVEL3_H
