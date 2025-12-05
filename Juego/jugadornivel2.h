@@ -17,9 +17,15 @@ public:
     void moverDerecha();
     void moverIzquierda();
 
+    void resetear();
+
+    // Para animación
+    bool estaMoviendose() const { return seEstaMoviendo; }
+    int getDireccion() const { return direccionActual; } // -1: izquierda, 1: derecha, 0: quieto
+
     QPointF getPosicion() const { return posicion; }
     float getVida() const { return vida; }
-    void recibirDanio(float danio) { vida -= danio; }
+    void recibirDanio(float danio) { vida -= danio; if (vida < 0) vida = 0; }
 
     QRectF getAreaColision() const;
 
@@ -27,6 +33,10 @@ private:
     float vida = 100.0f;
     QPointF posicion;
     std::vector<bool> teclasPresionadas;
+
+    // Para animación
+    bool seEstaMoviendo = false;
+    int direccionActual = 0; // -1: izquierda, 1: derecha, 0: quieto
 
     float velocidadMovimientoHorizontal = 8.0f;
     int limiteIzquierdo = 50;

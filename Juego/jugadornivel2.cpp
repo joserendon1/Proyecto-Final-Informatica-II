@@ -5,17 +5,33 @@ JugadorNivel2::JugadorNivel2()
 {
     posicion = QPointF(512, 650);
     teclasPresionadas.resize(4, false);
+    seEstaMoviendo = false;
+    direccionActual = 0;
 }
 
 void JugadorNivel2::actualizar(float deltaTime)
 {
     Q_UNUSED(deltaTime);
 
+    // Resetear estado de movimiento
+    seEstaMoviendo = false;
+    direccionActual = 0;
+
+    // Verificar teclas presionadas
     if (teclasPresionadas[0]) {
         moverIzquierda();
+        seEstaMoviendo = true;
+        direccionActual = -1;
     }
     if (teclasPresionadas[1]) {
         moverDerecha();
+        seEstaMoviendo = true;
+        direccionActual = 1;
+    }
+
+    // Si ambas teclas están presionadas, mantener la última dirección
+    if (teclasPresionadas[0] && teclasPresionadas[1]) {
+        // Mantener la dirección anterior o elegir una por defecto
     }
 }
 
@@ -42,7 +58,18 @@ void JugadorNivel2::moverIzquierda()
     }
 }
 
+void JugadorNivel2::resetear()
+{
+    posicion = QPointF(512, 650);
+    vida = 100.0f;
+    teclasPresionadas.clear();
+    teclasPresionadas.resize(4, false);
+    seEstaMoviendo = false;
+    direccionActual = 0;
+}
+
 QRectF JugadorNivel2::getAreaColision() const
 {
-    return QRectF(posicion.x() - 20, posicion.y() - 20, 40, 40);
+    // Área de colisión un poco más pequeña que el sprite para ser más permisivo
+    return QRectF(posicion.x() - 15, posicion.y() - 15, 30, 30);
 }

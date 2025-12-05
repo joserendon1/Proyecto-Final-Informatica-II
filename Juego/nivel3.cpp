@@ -65,7 +65,7 @@ int Nivel3::obtenerAjusteY(int tipoObstaculo)
 
 void Nivel3::setupNivel()
 {
-    tamanoVista = QSize(800, 600);
+    tamanoVista = QSize(960, 720);
     setFixedSize(tamanoVista);
 
     nivelCompletado = false;

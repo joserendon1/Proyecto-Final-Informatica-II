@@ -28,27 +28,29 @@ MainWindow::MainWindow(QWidget *parent)
 
     setWindowTitle("Último Bastión");
 
-    int anchoVentana = 1024;
-    int altoVentana = 768;
+    // REDUCIDO: Tamaño más pequeño y proporcional
+    int anchoVentana = 960;    // Reducido de 1024
+    int altoVentana = 720;     // Reducido de 768 (mantiene relación 4:3)
 
     setFixedSize(anchoVentana, altoVentana);
 
+    // Centrar en pantalla
     QScreen *screen = QGuiApplication::primaryScreen();
     QRect screenGeometry = screen->geometry();
     int x = (screenGeometry.width() - anchoVentana) / 2;
-    int y = (screenGeometry.height() - altoVentana) / 2;
+    int y = (screenGeometry.height() - altoVentana) / 4; // Un poco más arriba
     move(x, y);
 
     setFocusPolicy(Qt::StrongFocus);
 
     setupMenu();
-    setupToolbar();
+    // COMENTADO: setupToolbar(); // Eliminamos la barra de herramientas duplicada
     setupStatusBar();
 
     // Mostrar menú principal al inicio
     mostrarMenuPrincipal();
 
-    qDebug() << "Ventana configurada - 1024x768 fija";
+    qDebug() << "Ventana configurada - 960x720 fija";
 }
 
 MainWindow::~MainWindow()
@@ -101,14 +103,13 @@ void MainWindow::iniciarNivel2()
         setCentralWidget(nivel2);
         connectGameSignals();
 
-        statusBar()->showMessage("Nivel 2 - Defensa: Protege el castillo construyendo torres");
+        statusBar()->showMessage("Nivel 2 - Esquiva: Evita los barriles por 90 segundos");
         QMessageBox::information(this, "Nivel 2",
                                  "¡Nivel 2 iniciado!\n\n"
-                                 "OBJETIVO: Protege el castillo por 3 minutos\n"
+                                 "OBJETIVO: Esquiva barriles por 90 segundos\n"
                                  "CONTROLES:\n"
-                                 "- C: Cambiar modo construcción\n"
-                                 "- 1-4: Seleccionar tipo de torre\n"
-                                 "- Click: Construir/mejorar torre\n"
+                                 "- A: Mover izquierda\n"
+                                 "- D: Mover derecha\n"
                                  "- P: Pausar\n"
                                  "- R: Reanudar");
     });
@@ -122,10 +123,10 @@ void MainWindow::iniciarNivel3()
         setCentralWidget(nivel3);
         connectGameSignals();
 
-        statusBar()->showMessage("Nivel 3 - Carrera: Corre y esquiva obstáculos por 90 segundos");
+        statusBar()->showMessage("Nivel 3 - Carrera: Corre y esquiva obstáculos por 60 segundos");
         QMessageBox::information(this, "Nivel 3",
                                  "¡Nivel 3 iniciado!\n\n"
-                                 "OBJETIVO: Sobrevive 90 segundos\n"
+                                 "OBJETIVO: Sobrevive 60 segundos\n"
                                  "CONTROLES:\n"
                                  "- ESPACIO/W: Saltar obstáculos\n"
                                  "- S: Agacharse\n"
@@ -200,7 +201,7 @@ void MainWindow::setupMenu()
     QMenu *levelMenu = menuBar()->addMenu("&Nivel");
 
     QAction *level1Action = new QAction("Nivel &1 - Supervivencia", this);
-    QAction *level2Action = new QAction("Nivel &2 - Defensa", this);
+    QAction *level2Action = new QAction("Nivel &2 - Esquiva", this);  // Cambiado nombre
     QAction *level3Action = new QAction("Nivel &3 - Carrera", this);
 
     levelMenu->addAction(level1Action);
@@ -223,6 +224,8 @@ void MainWindow::setupMenu()
     connect(aboutAction, &QAction::triggered, this, &MainWindow::onShowAbout);
 }
 
+// COMENTADO: Eliminamos setupToolbar() para quitar la barra duplicada
+/*
 void MainWindow::setupToolbar()
 {
     QToolBar *gameToolbar = addToolBar("Juego");
@@ -244,6 +247,7 @@ void MainWindow::setupToolbar()
     connect(pauseAction, &QAction::triggered, this, &MainWindow::onPauseGame);
     connect(resumeAction, &QAction::triggered, this, &MainWindow::onResumeGame);
 }
+*/
 
 void MainWindow::setupStatusBar()
 {
@@ -263,7 +267,8 @@ void MainWindow::connectGameSignals()
     if (nivel2) {
         connect(nivel2, &Nivel2::gamePaused, this, &MainWindow::onGamePaused);
         connect(nivel2, &Nivel2::gameResumed, this, &MainWindow::onGameResumed);
-        connect(nivel2, &Nivel2::playerLevelUp, this, &MainWindow::onPlayerLevelUp);
+        // Nivel2 no tiene playerLevelUp, pero mantenemos la conexión por compatibilidad
+        // (la señal está definida pero vacía)
         connect(nivel2, &Nivel2::gameOver, this, &MainWindow::onGameOver);
         connect(nivel2, &Nivel2::levelCompleted, this, &MainWindow::onLevelCompleted);
     }
@@ -284,7 +289,7 @@ void MainWindow::onNewGame()
     msgBox.setText("Selecciona el nivel que deseas jugar:");
 
     QPushButton *nivel1Button = msgBox.addButton("Nivel 1 - Supervivencia", QMessageBox::ActionRole);
-    QPushButton *nivel2Button = msgBox.addButton("Nivel 2 - Defensa", QMessageBox::ActionRole);
+    QPushButton *nivel2Button = msgBox.addButton("Nivel 2 - Esquiva", QMessageBox::ActionRole);
     QPushButton *nivel3Button = msgBox.addButton("Nivel 3 - Carrera", QMessageBox::ActionRole);
     QPushButton *cancelButton = msgBox.addButton("Cancelar", QMessageBox::RejectRole);
     Q_UNUSED(cancelButton);
@@ -331,20 +336,19 @@ void MainWindow::onShowControls()
         "P - Pausar juego\n"
         "R - Reanudar juego\n"
         "1, 2, 3 - Seleccionar mejoras\n\n"
-        "NIVEL 2 - DEFENSA:\n"
-        "WASD - Movimiento del jugador\n"
-        "C - Cambiar modo construcción\n"
-        "1-4 - Seleccionar tipo de torre\n"
-        "Click - Construir/mejorar torre\n"
-        "P - Pausar, R - Reanudar\n\n"
+        "NIVEL 2 - ESQUIVA:\n"
+        "A - Mover izquierda\n"
+        "D - Mover derecha\n"
+        "P - Pausar\n"
+        "R - Reanudar\n\n"
         "NIVEL 3 - CARRERA:\n"
         "ESPACIO/W - Saltar obstáculos\n"
         "S - Agacharse\n"
         "P - Pausar, R - Reanudar\n\n"
         "OBJETIVOS:\n"
         "Nivel 1: Sobrevive 2 minutos\n"
-        "Nivel 2: Protege el castillo 3 minutos\n"
-        "Nivel 3: Sobrevive 90 segundos";
+        "Nivel 2: Esquiva barriles por 90 segundos\n"
+        "Nivel 3: Sobrevive 60 segundos";
 
     QMessageBox::information(this, "Controles del Juego", controles);
 }
@@ -356,7 +360,7 @@ void MainWindow::onShowAbout()
         "Juego de supervivencia con temática medieval\n\n"
         "Niveles:\n"
         "- Nivel 1: Supervivencia en las Murallas\n"
-        "- Nivel 2: Defensa del Castillo\n"
+        "- Nivel 2: Esquiva de Barriles\n"
         "- Nivel 3: Carrera de Supervivencia\n\n"
         "Características:\n"
         "- 3 tipos de niveles diferentes\n"
