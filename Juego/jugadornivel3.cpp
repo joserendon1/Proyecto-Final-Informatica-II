@@ -7,7 +7,7 @@ JugadorNivel3::JugadorNivel3()
     // Configuración específica para el nivel 3
     vida = 5;
     velocidad = 3.0f;
-    posicion = QPointF(100, 530); // MÁS ABAJO - en el suelo
+    posicion = QPointF(100, 540);
 
     // Estados del nivel 3
     estaSaltando = false;
@@ -43,7 +43,7 @@ void JugadorNivel3::actualizar(float deltaTime)
     // DEBUG: Mostrar estado ocasionalmente
     static int debugCounter = 0;
     if (debugCounter++ % 60 == 0) {
-        qDebug() << "🔄 Jugador actualizando - Saltando:" << estaSaltando
+        qDebug() << "Jugador actualizando - Saltando:" << estaSaltando
                  << "GravedadAumentada:" << gravedadAumentada
                  << "VelVertical:" << velocidadVertical
                  << "PosY:" << posicion.y();
@@ -58,8 +58,8 @@ void JugadorNivel3::actualizar(float deltaTime)
     posicion.setY(posicion.y() + velocidadVertical * deltaSec);
 
     // Verificar si llegó al suelo (530 es el suelo)
-    if (posicion.y() >= 530.0f) {
-        posicion.setY(530.0f);
+    if (posicion.y() >= 540.0f) {
+        posicion.setY(540.0f);
         velocidadVertical = 0.0f;
         estaSaltando = false;
         tiempoSalto = 0.0f;
@@ -67,7 +67,7 @@ void JugadorNivel3::actualizar(float deltaTime)
         gravedad = gravedadNormal; // Restaurar gravedad normal
 
         if (debugCounter % 60 == 0) {
-            qDebug() << "👣 Jugador tocó suelo - Gravedad restaurada a normal";
+            qDebug() << "Jugador tocó suelo - Gravedad restaurada a normal";
         }
     }
 

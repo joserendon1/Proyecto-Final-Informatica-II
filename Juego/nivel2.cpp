@@ -123,7 +123,7 @@ Nivel2::Nivel2(QWidget *parent) : QWidget(parent)
     , frameAnimacion(0)
     , tiempoAnimacion(0)
     , tiempoTranscurrido(0)
-    , tiempoObjetivo(90)
+    , tiempoObjetivo(60)
     , barrilesEsquivados(0)
     , puntuacion(0)
     , enPausa(false)
@@ -133,6 +133,11 @@ Nivel2::Nivel2(QWidget *parent) : QWidget(parent)
     , tiempoDesdeUltimoSpawn(0)
     , cooldownSonidoMovimiento(0)
     , jugadorSeEstaMoviendo(false)
+    , frameAnimacionIdle(0)
+    , frameAnimacionMove(0)
+    , tiempoAnimacionIdle(0)
+    , tiempoAnimacionMove(0)
+
 {
     setFixedSize(ANCHO_VENTANA, ALTO_VENTANA);
     setFocusPolicy(Qt::StrongFocus);
@@ -165,12 +170,10 @@ void Nivel2::setupNivel()
     connect(timerJuego, &QTimer::timeout, this, &Nivel2::actualizarJuego);
     connect(timerGeneracionBarriles, &QTimer::timeout, this, &Nivel2::generarBarril);
 
-    // Verificar sprites
     QPixmap testSprite = SpriteManager::getInstance().getSprite("obstacle3");
-    qDebug() << "🎯 Sprite obstacle3 cargado:" << !testSprite.isNull() << "Tamaño:" << testSprite.size();
 
     if (testSprite.isNull()) {
-        qDebug() << "⚠️ WARNING: obstacle3 no encontrado, usarán fallbacks";
+        qDebug() << "obstacle3 no encontrado, usarán fallbacks";
     }
 }
 
@@ -194,6 +197,16 @@ void Nivel2::iniciarNivel()
     cooldownSonidoMovimiento = 0;
     jugadorSeEstaMoviendo = false;
 
+    QRandomGenerator* random = QRandomGenerator::global();
+
+    // Inicializar frames de animación
+    frameAnimacionIdle = random->bounded(8);  // Frame aleatorio entre 0-7
+    frameAnimacionMove = random->bounded(6);  // Frame aleatorio entre 0-5
+
+    // Inicializar tiempos con valores aleatorios para que las animaciones comiencen inmediatamente
+    tiempoAnimacionIdle = static_cast<float>(random->generateDouble() * 0.125f);  // Valor aleatorio entre 0-0.125s
+    tiempoAnimacionMove = static_cast<float>(random->generateDouble() * 0.1f);    // Valor aleatorio entre 0-0.1s
+
     // Resetear jugador
     jugador->resetear();
 
@@ -210,7 +223,9 @@ void Nivel2::iniciarNivel()
     AudioManager::getInstance().stopBackgroundMusic();
     AudioManager::getInstance().playBackgroundMusic();
 
-    qDebug() << "🎮 Nivel 2 iniciado - Modo Esquiva de Barriles";
+    qDebug() << "Nivel 2 iniciado - Modo Esquiva de Barriles";
+    qDebug() << "Animación inicial - Idle frame:" << frameAnimacionIdle
+             << "Move frame:" << frameAnimacionMove;
 
     update();
 }
@@ -243,16 +258,14 @@ void Nivel2::actualizarJuego()
 {
     if (enPausa || !juegoIniciado) return;
 
-    // Calcular deltaTime
     static qint64 tiempoAnterior = 0;
+    static bool primerFrame = true;  // Variable para detectar el primer frame
     qint64 tiempoActual = timerNivel.elapsed();
     float deltaTime = tiempoAnterior > 0 ? (tiempoActual - tiempoAnterior) / 1000.0f : 0.016f;
     tiempoAnterior = tiempoActual;
 
-    // Actualizar tiempo
     tiempoTranscurrido = tiempoActual / 1000;
 
-    // Verificar victoria
     if (tiempoTranscurrido >= tiempoObjetivo) {
         nivelCompletado = true;
         juegoIniciado = false;
@@ -266,13 +279,23 @@ void Nivel2::actualizarJuego()
         return;
     }
 
-    // Actualizar animación del jugador
     actualizarAnimacion(deltaTime);
 
-    // Actualizar posición del jugador
+    // Si es el primer frame, forzar un frame de animación inmediato
+    if (primerFrame) {
+        primerFrame = false;
+
+        // Forzar al menos un cambio de frame para que la animación sea visible inmediatamente
+        QRandomGenerator* random = QRandomGenerator::global();
+        frameAnimacionIdle = random->bounded(8);
+        frameAnimacionMove = random->bounded(6);
+
+        // También forzar la actualización visual
+        update();
+    }
+
     jugador->actualizar(deltaTime);
 
-    // Manejo de sonido de movimiento
     bool moviendoseAhora = jugador->estaMoviendose();
 
     if (moviendoseAhora && !jugadorSeEstaMoviendo) {
@@ -338,11 +361,20 @@ void Nivel2::actualizarJuego()
 
 void Nivel2::actualizarAnimacion(float deltaTime)
 {
-    tiempoAnimacion += deltaTime;
+    tiempoAnimacionIdle += deltaTime;
+    tiempoAnimacionMove += deltaTime;
 
-    if (tiempoAnimacion > 0.1f) {
-        frameAnimacion = (frameAnimacion + 1) % 6;
-        tiempoAnimacion = 0;
+    // CORREGIR: Usar valores de tiempo lógicos (0.1 segundos, no 100)
+    // Animación idle (8 frames, 8 FPS = 0.125 segundos por frame)
+    if (tiempoAnimacionIdle > 0.125f) {
+        frameAnimacionIdle = (frameAnimacionIdle + 1) % 8;
+        tiempoAnimacionIdle = 0;
+    }
+
+    // Animación move (6 frames, 10 FPS = 0.1 segundos por frame)
+    if (tiempoAnimacionMove > 0.1f) {
+        frameAnimacionMove = (frameAnimacionMove + 1) % 6;
+        tiempoAnimacionMove = 0;
     }
 }
 
@@ -545,7 +577,7 @@ void Nivel2::paintEvent(QPaintEvent *event)
         UIManager::getInstance().drawText(painter, "¡NIVEL COMPLETADO!",
                                           width()/2 - 150, height()/2 - 50, 2.0f);
         UIManager::getInstance().drawText(painter,
-                                          QString("Puntuación: %1").arg(puntuacion),
+                                          QString("Puntuacion: %1").arg(puntuacion),
                                           width()/2 - 100, height()/2, 1.5f);
         UIManager::getInstance().drawText(painter,
                                           QString("Barriles esquivados: %1").arg(barrilesEsquivados),
@@ -560,14 +592,48 @@ void Nivel2::dibujarEntidadConSprite(QPainter &painter, const QPointF &posicion,
     QPixmap spriteSheet = SpriteManager::getInstance().getSprite(spriteName);
 
     if(!spriteSheet.isNull()) {
-        QRect frameRect(currentFrame * frameWidth, 0, frameWidth, frameHeight);
+        // Verificar que el sprite esté cargado correctamente
+        if (spriteSheet.isNull() || spriteSheet.width() == 0 || spriteSheet.height() == 0) {
+            qDebug() << "⚠️ Sprite" << spriteName << "no está cargado correctamente";
+            dibujarEntidadSimple(painter, posicion, displaySize, QColor(255, 100, 100));
+            return;
+        }
+
+        // Calcular cuántos frames caben horizontalmente
+        int framesPerRow = spriteSheet.width() / frameWidth;
+        if (framesPerRow <= 0) framesPerRow = 1;
+
+        // Calcular fila y columna
+        int row = currentFrame / framesPerRow;
+        int col = currentFrame % framesPerRow;
+
+        // Verificar que el frame esté dentro de los límites
+        int totalFramesVertical = spriteSheet.height() / frameHeight;
+        if (row >= totalFramesVertical) {
+            row = 0;
+            col = 0;
+        }
+
+        QRect frameRect(col * frameWidth,
+                        row * frameHeight,
+                        frameWidth,
+                        frameHeight);
+
+        // Verificar que el rectángulo esté dentro del sprite
+        if (frameRect.right() > spriteSheet.width() || frameRect.bottom() > spriteSheet.height()) {
+            qDebug() << "⚠️ Frame rect fuera de límites, usando frame 0";
+            frameRect = QRect(0, 0, frameWidth, frameHeight);
+        }
+
         QPixmap frame = spriteSheet.copy(frameRect);
 
         QRectF displayRect(posicion.x() - displaySize.width()/2,
                            posicion.y() - displaySize.height()/2,
                            displaySize.width(), displaySize.height());
         painter.drawPixmap(displayRect, frame, frame.rect());
+
     } else {
+        qDebug() << "⚠️ Sprite" << spriteName << "no encontrado, usando fallback";
         dibujarEntidadSimple(painter, posicion, displaySize, QColor(255, 100, 100));
     }
 }
@@ -744,9 +810,14 @@ void Nivel2::dibujarJugador(QPainter &painter)
 
     int frameWidth = 192;
     int frameHeight = 192;
-    int totalFrames = spriteName == "player_move" ? 6 : 8;
 
-    int currentFrame = frameAnimacion % totalFrames;
+    // Usar el frame correcto según el estado
+    int currentFrame;
+    if (jugador->estaMoviendose()) {
+        currentFrame = frameAnimacionMove % 6;  // SIEMPRE entre 0-5
+    } else {
+        currentFrame = frameAnimacionIdle % 8;  // SIEMPRE entre 0-7
+    }
 
     dibujarEntidadConSprite(painter, pos, spriteName, displaySize, frameWidth, frameHeight, currentFrame);
 }

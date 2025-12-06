@@ -9,7 +9,6 @@
 #include <QToolBar>
 #include <QStatusBar>
 #include <QAction>
-#include <QMessageBox>
 #include <QDebug>
 #include <QVBoxLayout>
 #include <QScreen>
@@ -83,14 +82,7 @@ void MainWindow::iniciarNivel1()
         connectGameSignals();
 
         statusBar()->showMessage("Nivel 1 - Supervivencia: Sobrevive 2 minutos contra oleadas de enemigos");
-        QMessageBox::information(this, "Nivel 1",
-                                 "¡Nivel 1 iniciado!\n\n"
-                                 "OBJETIVO: Sobrevive 2 minutos\n"
-                                 "CONTROLES:\n"
-                                 "- WASD: Movimiento\n"
-                                 "- P: Pausar\n"
-                                 "- R: Reanudar\n"
-                                 "- 1,2,3: Seleccionar mejoras");
+
     });
 }
 
@@ -103,14 +95,7 @@ void MainWindow::iniciarNivel2()
         connectGameSignals();
 
         statusBar()->showMessage("Nivel 2 - Esquiva: Evita los barriles por 90 segundos");
-        QMessageBox::information(this, "Nivel 2",
-                                 "¡Nivel 2 iniciado!\n\n"
-                                 "OBJETIVO: Esquiva barriles por 90 segundos\n"
-                                 "CONTROLES:\n"
-                                 "- A: Mover izquierda\n"
-                                 "- D: Mover derecha\n"
-                                 "- P: Pausar\n"
-                                 "- R: Reanudar");
+
     });
 }
 
@@ -123,14 +108,7 @@ void MainWindow::iniciarNivel3()
         connectGameSignals();
 
         statusBar()->showMessage("Nivel 3 - Carrera: Corre y esquiva obstáculos por 60 segundos");
-        QMessageBox::information(this, "Nivel 3",
-                                 "¡Nivel 3 iniciado!\n\n"
-                                 "OBJETIVO: Sobrevive 60 segundos\n"
-                                 "CONTROLES:\n"
-                                 "- ESPACIO/W: Saltar obstáculos\n"
-                                 "- S: Agacharse\n"
-                                 "- P: Pausar\n"
-                                 "- R: Reanudar");
+
     });
 }
 
@@ -241,8 +219,6 @@ void MainWindow::connectGameSignals()
     if (nivel2) {
         connect(nivel2, &Nivel2::gamePaused, this, &MainWindow::onGamePaused);
         connect(nivel2, &Nivel2::gameResumed, this, &MainWindow::onGameResumed);
-        // Nivel2 no tiene playerLevelUp, pero mantenemos la conexión por compatibilidad
-        // (la señal está definida pero vacía)
         connect(nivel2, &Nivel2::gameOver, this, &MainWindow::onGameOver);
         connect(nivel2, &Nivel2::levelCompleted, this, &MainWindow::onLevelCompleted);
     }
@@ -257,26 +233,7 @@ void MainWindow::connectGameSignals()
 
 void MainWindow::onNewGame()
 {
-    // Mostrar diálogo para seleccionar nivel
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Nuevo Juego");
-    msgBox.setText("Selecciona el nivel que deseas jugar:");
 
-    QPushButton *nivel1Button = msgBox.addButton("Nivel 1 - Supervivencia", QMessageBox::ActionRole);
-    QPushButton *nivel2Button = msgBox.addButton("Nivel 2 - Esquiva", QMessageBox::ActionRole);
-    QPushButton *nivel3Button = msgBox.addButton("Nivel 3 - Carrera", QMessageBox::ActionRole);
-    QPushButton *cancelButton = msgBox.addButton("Cancelar", QMessageBox::RejectRole);
-    Q_UNUSED(cancelButton);
-
-    msgBox.exec();
-
-    if (msgBox.clickedButton() == nivel1Button) {
-        iniciarNivel1();
-    } else if (msgBox.clickedButton() == nivel2Button) {
-        iniciarNivel2();
-    } else if (msgBox.clickedButton() == nivel3Button) {
-        iniciarNivel3();
-    }
 }
 
 void MainWindow::onPauseGame()
@@ -324,7 +281,6 @@ void MainWindow::onShowControls()
         "Nivel 2: Esquiva barriles por 90 segundos\n"
         "Nivel 3: Sobrevive 60 segundos";
 
-    QMessageBox::information(this, "Controles del Juego", controles);
 }
 
 void MainWindow::onShowAbout()
@@ -345,7 +301,6 @@ void MainWindow::onShowAbout()
         "Desarrollado con Qt Framework\n"
         "© 2024";
 
-    QMessageBox::about(this, "Acerca de Último Bastión", aboutText);
 }
 
 void MainWindow::onGamePaused()
@@ -367,32 +322,9 @@ void MainWindow::onGameOver()
 {
     statusBar()->showMessage("GAME OVER - Has sido derrotado");
 
-    QMessageBox gameOverMsg;
-    gameOverMsg.setWindowTitle("Game Over");
-    gameOverMsg.setText("¡Has sido derrotado!");
-    gameOverMsg.setInformativeText("¿Quieres intentarlo de nuevo?");
-    gameOverMsg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    gameOverMsg.setDefaultButton(QMessageBox::Yes);
-
-    int respuesta = gameOverMsg.exec();
-    if (respuesta == QMessageBox::Yes) {
-        onNewGame();
-    }
 }
 
 void MainWindow::onLevelCompleted()
 {
     statusBar()->showMessage("¡VICTORIA! Has completado el nivel");
-
-    QMessageBox victoryMsg;
-    victoryMsg.setWindowTitle("¡Victoria!");
-    victoryMsg.setText("¡Felicidades! Has completado el nivel.");
-    victoryMsg.setInformativeText("¿Quieres jugar de nuevo?");
-    victoryMsg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    victoryMsg.setDefaultButton(QMessageBox::Yes);
-
-    int respuesta = victoryMsg.exec();
-    if (respuesta == QMessageBox::Yes) {
-        onNewGame();
-    }
 }

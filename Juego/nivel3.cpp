@@ -95,7 +95,7 @@ void Nivel3::setupNivel()
     }
 
     timerNivel.start();
-    qDebug() << "🎮 Nivel 3 iniciado - Solo obstacle1 y obstacle3";
+    qDebug() << "Nivel 3 iniciado - Solo obstacle1 y obstacle3";
 }
 
 void Nivel3::iniciarNivel()
@@ -128,7 +128,7 @@ void Nivel3::actualizarJuego(float deltaTime)
     // DEBUG ocasional
     static int debugCounter = 0;
     if (debugCounter++ % 120 == 0) {
-        qDebug() << "🎯 Jugador - Pos Y:" << jugadorN3->getPosicion().y()
+        qDebug() << "Jugador - Pos Y:" << jugadorN3->getPosicion().y()
             << "Saltando:" << jugadorN3->estaSaltando
             << "Agachado:" << jugadorN3->estaAgachado;
     }
@@ -189,7 +189,7 @@ QList<int> Nivel3::getObstaculosDisponibles() {
         }
     }
 
-    qDebug() << "📊 Distancia:" << distanciaRecorrida
+    qDebug() << "Distancia:" << distanciaRecorrida
              << "Obstáculos disponibles:" << disponibles;
     return disponibles;
 }
@@ -203,7 +203,7 @@ void Nivel3::generarObstaculos()
     if (usarPatron) {
         int patron = random->bounded(2);
         generarPatronObstaculos(patron);
-        qDebug() << "🎯 Patrón de obstáculos:" << patron;
+        qDebug() << "Patrón de obstáculos:" << patron;
     } else {
         generarObstaculosAleatorios();
     }
@@ -464,7 +464,7 @@ void Nivel3::paintEvent(QPaintEvent *event){
     if (nivelCompletado) {
         painter.fillRect(rect(), QColor(0, 0, 0, 150));
         UIManager::getInstance().drawText(painter, "¡NIVEL COMPLETADO!",
-                                          width()/2 - 150, height()/2, 2.0f);
+                                          width()/2 - 150, height()/2 - 50, 2.0f);
     }
 }
 

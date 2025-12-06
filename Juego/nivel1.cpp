@@ -47,7 +47,7 @@ Nivel1::Nivel1(QWidget *parent) : NivelBase(parent)
 
     // Inicializar estado específico del nivel 1
     tiempoTranscurrido = 0;
-    tiempoObjetivo = 120;
+    tiempoObjetivo = 60;
     numeroOleada = 1;
     enemigosPorOleada = 4;
     frecuenciaGeneracion = 3500;
@@ -212,9 +212,8 @@ void Nivel1::mostrarOpcionesMejoras()
 
 void Nivel1::actualizarJuego(float deltaTime)
 {
-    // VERIFICACIONES DE SEGURIDAD AL INICIO
     if (!jugador || !mapa) {
-        qDebug() << "❌ ERROR: Jugador o mapa es nullptr en actualizarJuego";
+        qDebug() << "ERROR: Jugador o mapa es nullptr en actualizarJuego";
         return;
     }
 
@@ -569,7 +568,7 @@ void Nivel1::procesarSeleccionMejora(int opcion)
 
     const Mejora& mejoraSeleccionada = opcionesMejorasActuales[opcion];
 
-    qDebug() << "✅ Mejora seleccionada:" << mejoraSeleccionada.getNombre();
+    qDebug() << "Mejora seleccionada:" << mejoraSeleccionada.getNombre();
 
     aplicarMejora(mejoraSeleccionada);
 
@@ -639,12 +638,7 @@ void Nivel1::paintEvent(QPaintEvent *event)
     // DEBUG: Dibujar área de colisión del jugador
     QPointF playerPos = jugador->getPosicion();
     QPointF playerPosRelativa = playerPos - vistaCamara.topLeft();
-    QRectF areaColision = jugador->getAreaColision();
-    QRectF areaColisionRelativa = areaColision.translated(-vistaCamara.topLeft());
 
-    painter.setPen(QPen(Qt::red, 2));
-    painter.setBrush(Qt::NoBrush);
-    painter.drawRect(areaColisionRelativa);
     // === ANIMACIÓN DEL JUGADOR SIMPLIFICADA ===
     static int currentFrame = 0;
     static int animationCounter = 0;
@@ -698,12 +692,11 @@ void Nivel1::paintEvent(QPaintEvent *event)
         dibujarMenuMejoras(painter);
     }
 
-    QPixmap cursor = UIManager::getInstance().getCursor();
-    if(!cursor.isNull()) {
-        QPoint cursorPos = mapFromGlobal(QCursor::pos());
-        painter.drawPixmap(cursorPos.x() - cursor.width()/2,
-                           cursorPos.y() - cursor.height()/2,
-                           cursor);
+    if (tiempoTranscurrido==60) {
+        painter.fillRect(rect(), QColor(0, 0, 0, 150));
+
+        UIManager::getInstance().drawText(painter, "¡NIVEL COMPLETADO!",
+                                          width()/2 - 150, height()/2 - 50, 2.0f);
     }
 }
 
@@ -850,6 +843,15 @@ void Nivel1::dibujarHUD(QPainter &painter)
 
         ui.drawText(painter, alertText, panelCenterX - alertWidth/2, alertY + 10, 1.0f);
     }
+
+    int controlesX = width() - 220;
+    int controlesY = 30;
+
+    ui.drawText(painter, "CONTROLES:", controlesX, controlesY, 1.0f);
+    ui.drawText(painter, "A - Izquierda", controlesX, controlesY + 20, 0.9f);
+    ui.drawText(painter, "D - Derecha", controlesX, controlesY + 40, 0.9f);
+    ui.drawText(painter, "W - Arriba", controlesX, controlesY + 60, 0.9f);
+    ui.drawText(painter, "S - Abajo", controlesX, controlesY + 80, 0.9f);
 }
 
 void Nivel1::dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const QPointF &posicionRelativa)

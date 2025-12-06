@@ -60,7 +60,7 @@ void JugadorNivel2::moverIzquierda()
 
 void JugadorNivel2::resetear()
 {
-    posicion = QPointF(400, 500);  // Ajustado de (512, 650)
+    posicion = QPointF(400, 520);  // Ajustado de (512, 650)
     vida = 100.0f;
     teclasPresionadas.clear();
     teclasPresionadas.resize(4, false);

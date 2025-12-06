@@ -42,6 +42,11 @@ private:
     // Declaración forward de la estructura Barril
     struct Barril;
 
+    int frameAnimacionIdle;
+    int frameAnimacionMove;
+    float tiempoAnimacionIdle;
+    float tiempoAnimacionMove;
+
     void setupNivel();
     void procesarColisiones();
     void limpiarBarriles();

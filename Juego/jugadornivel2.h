@@ -39,7 +39,7 @@ private:
     bool seEstaMoviendo = false;
     int direccionActual = 0; // -1: izquierda, 1: derecha, 0: quieto
 
-    float velocidadMovimientoHorizontal = 8.0f;
+    float velocidadMovimientoHorizontal = 3.0f;
     int limiteIzquierdo = 50;
     int limiteDerecho = 750;  // Ajustado de 974
 };
