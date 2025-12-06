@@ -22,6 +22,8 @@
         <file>maps/Obstaculo3.png</file>
         <file>maps/Obstaculo4.png</file>
         <file>maps/ground2.png</file>
+        <file>maps/fondo1.png</file>
+        <file>maps/fondo2.png</file>
     </qresource>
     <qresource prefix="/ui">
         <file>ui/button_hover.png</file>

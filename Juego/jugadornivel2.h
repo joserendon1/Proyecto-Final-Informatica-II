@@ -30,6 +30,7 @@ public:
     QRectF getAreaColision() const;
 
 private:
+private:
     float vida = 100.0f;
     QPointF posicion;
     std::vector<bool> teclasPresionadas;
@@ -40,7 +41,7 @@ private:
 
     float velocidadMovimientoHorizontal = 8.0f;
     int limiteIzquierdo = 50;
-    int limiteDerecho = 974;
+    int limiteDerecho = 750;  // Ajustado de 974
 };
 
 #endif // JUGADORNIVEL2_H

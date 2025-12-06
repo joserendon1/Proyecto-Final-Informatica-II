@@ -8,7 +8,7 @@ NivelBase::NivelBase(QWidget *parent) : QWidget(parent)
     jugador = nullptr;
     mapa = nullptr;
     timerJuego = nullptr;
-    tamanoVista = QSize(1024, 768);
+    tamanoVista = QSize(800, 600);
     teclas.resize(4, false);
     setupNivelBase();
 }

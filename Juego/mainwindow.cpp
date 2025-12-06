@@ -28,9 +28,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     setWindowTitle("Último Bastión");
 
-    // REDUCIDO: Tamaño más pequeño y proporcional
-    int anchoVentana = 960;    // Reducido de 1024
-    int altoVentana = 720;     // Reducido de 768 (mantiene relación 4:3)
+    // Tamaño final más pequeño y cuadrado
+    int anchoVentana = 800;    // Reducido de 960
+    int altoVentana = 600;     // Reducido de 720 (mantiene relación 4:3)
 
     setFixedSize(anchoVentana, altoVentana);
 
@@ -44,13 +44,12 @@ MainWindow::MainWindow(QWidget *parent)
     setFocusPolicy(Qt::StrongFocus);
 
     setupMenu();
-    // COMENTADO: setupToolbar(); // Eliminamos la barra de herramientas duplicada
     setupStatusBar();
 
     // Mostrar menú principal al inicio
     mostrarMenuPrincipal();
 
-    qDebug() << "Ventana configurada - 960x720 fija";
+    qDebug() << "Ventana configurada - 800x600 fija";
 }
 
 MainWindow::~MainWindow()
@@ -223,31 +222,6 @@ void MainWindow::setupMenu()
     connect(controlsAction, &QAction::triggered, this, &MainWindow::onShowControls);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::onShowAbout);
 }
-
-// COMENTADO: Eliminamos setupToolbar() para quitar la barra duplicada
-/*
-void MainWindow::setupToolbar()
-{
-    QToolBar *gameToolbar = addToolBar("Juego");
-    gameToolbar->setMovable(false);
-
-    QAction *newGameAction = new QAction("Nuevo Juego", this);
-    QAction *menuPrincipalAction = new QAction("Menú Principal", this);
-    QAction *pauseAction = new QAction("Pausar", this);
-    QAction *resumeAction = new QAction("Reanudar", this);
-
-    gameToolbar->addAction(newGameAction);
-    gameToolbar->addAction(menuPrincipalAction);
-    gameToolbar->addSeparator();
-    gameToolbar->addAction(pauseAction);
-    gameToolbar->addAction(resumeAction);
-
-    connect(newGameAction, &QAction::triggered, this, &MainWindow::onNewGame);
-    connect(menuPrincipalAction, &QAction::triggered, this, &MainWindow::mostrarMenuPrincipal);
-    connect(pauseAction, &QAction::triggered, this, &MainWindow::onPauseGame);
-    connect(resumeAction, &QAction::triggered, this, &MainWindow::onResumeGame);
-}
-*/
 
 void MainWindow::setupStatusBar()
 {

@@ -39,46 +39,8 @@ private slots:
     void actualizarJuego();
 
 private:
-    struct Barril {
-        QPointF posicion;
-        float velocidad;
-        bool activo;
-        int tipo; // 1: normal (obstacle3), 2: grande (obstacle1), 3: pequeño (obstacle4)
-
-        Barril(QPointF pos, float vel, int t = 1) :
-            posicion(pos), velocidad(vel), activo(true), tipo(t) {}
-
-        QRectF getAreaColision() const {
-            switch(tipo) {
-            case 1: return QRectF(posicion.x() - 15, posicion.y() - 15, 30, 30); // obstacle3
-            case 2: return QRectF(posicion.x() - 25, posicion.y() - 25, 50, 50); // obstacle1
-            case 3: return QRectF(posicion.x() - 10, posicion.y() - 10, 20, 20); // obstacle4
-            default: return QRectF(posicion.x() - 15, posicion.y() - 15, 30, 30);
-            }
-        }
-
-        QString getSpriteName() const {
-            switch(tipo) {
-            case 1: return "obstacle3";
-            case 2: return "obstacle1";
-            case 3: return "obstacle4";
-            default: return "obstacle3";
-            }
-        }
-
-        QSize getDisplaySize() const {
-            switch(tipo) {
-            case 1: return QSize(30, 30); // obstacle3
-            case 2: return QSize(50, 50); // obstacle1
-            case 3: return QSize(20, 20); // obstacle4
-            default: return QSize(30, 30);
-            }
-        }
-
-        bool estaFueraDePantalla() const {
-            return posicion.y() > 768;
-        }
-    };
+    // Declaración forward de la estructura Barril
+    struct Barril;
 
     void setupNivel();
     void procesarColisiones();
@@ -89,9 +51,10 @@ private:
     void dibujarBarriles(QPainter &painter);
     void dibujarHUD(QPainter &painter);
     void dibujarFondo(QPainter &painter);
+    void dibujarFondoEnCapas(QPainter &painter);
     void dibujarSuelo(QPainter &painter);
 
-    // Métodos helper similares al Nivel 1
+    // Métodos helper para dibujo
     void dibujarEntidadConSprite(QPainter &painter, const QPointF &posicion,
                                  const QString &spriteName, const QSize &displaySize,
                                  int frameWidth, int frameHeight, int currentFrame);
@@ -129,11 +92,11 @@ private:
     bool jugadorSeEstaMoviendo;
 
     // Constantes
-    const int ANCHO_VENTANA = 1024;
-    const int ALTO_VENTANA = 768;
-    const int SUELO_Y = 700;
+    const int ANCHO_VENTANA = 800;
+    const int ALTO_VENTANA = 600;
+    const int SUELO_Y = 550;
     const int LIMITE_IZQUIERDO = 50;
-    const int LIMITE_DERECHO = 974;
+    const int LIMITE_DERECHO = 750;
 };
 
 #endif // NIVEL2_H

@@ -80,6 +80,8 @@ void SpriteManager::preloadGameSprites()
     bool loaded10 = loadSprite("obstacle2", ":/map/maps/Obstaculo2.png");
     bool loaded11 = loadSprite("obstacle3", ":/map/maps/Obstaculo3.png");
     bool loaded12 = loadSprite("obstacle4", ":/map/maps/Obstaculo4.png");
+    bool loaded13 = loadSprite("fondo1", ":/map/maps/fondo1.png");
+    bool loaded14 = loadSprite("fondo2", ":/map/maps/fondo2.png");
 
     qDebug() << "=== ESTADO DE CARGA DE SPRITES ===";
     qDebug() << "Jugador (idle/move):" << loaded1 << loaded2;
