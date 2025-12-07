@@ -26,7 +26,6 @@ public:
     void setMusicVolume(float volume);
     void setEffectsVolume(float volume);
 
-    // Métodos específicos para sonidos comunes
     void playBackgroundMusic();
     void stopBackgroundMusic();
     void playPlayerMove();
@@ -35,13 +34,11 @@ public:
     void playLevelUp();
     void playPlayerHurt();
 
-    //MÉTODOS DE LIMPIEZA
     void stopAllSounds();
     void stopAllEffects();
     void cleanUp();
     void resetForNewLevel();
 
-    // Método de diagnóstico para probar sonidos
     void testAllSounds();
 
 private:

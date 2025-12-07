@@ -16,7 +16,6 @@ Mapa::~Mapa()
 
 void Mapa::cargarSpritesMapa()
 {
-    // Cargar sprites
     spriteSuelo = QPixmap(":/map/maps/ground.png");
     spriteHouse = QPixmap(":/map/maps/House.png");
     spriteTower = QPixmap(":/map/maps/Tower.png");
@@ -24,7 +23,6 @@ void Mapa::cargarSpritesMapa()
     spriteTreeSheet = QPixmap(":/map/maps/Tree.png");
     spriteBushSheet = QPixmap(":/map/maps/Bushe.png");
 
-    // Verificar carga
     if(spriteSuelo.isNull()) {
         qDebug() << "No se pudo cargar ground.png";
         spriteSuelo = QPixmap(64, 64);

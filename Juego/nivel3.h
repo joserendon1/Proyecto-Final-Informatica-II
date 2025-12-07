@@ -28,13 +28,10 @@ private slots:
 
 private:
     const int SUELO_Y = 550;
-    const int AJUSTE_OBSTACULO1 = 35;  // Ajuste para obstacle1 (alto)
-    const int AJUSTE_OBSTACULO3 = 35;  // Ajuste para obstacle3 (bajo)
-
-    // Constantes de separación
-    const int SEPARACION_MINIMA = 600;  // Más espacio entre obstáculos
+    const int AJUSTE_OBSTACULO1 = 35;
+    const int AJUSTE_OBSTACULO3 = 35;
+    const int SEPARACION_MINIMA = 600;
     const int SEPARACION_MAXIMA = 800;
-
     void setupNivel();
     void generarObstaculos();
     void generarPatronObstaculos(int tipoPatron);
@@ -49,32 +46,21 @@ private:
     QSize obtenerDimensionesSprite(int tipoObstaculo);
     QSize obtenerDimensionesHitbox(int tipoObstaculo);
     int obtenerAjusteY(int tipoObstaculo);
-
-    // Propiedades específicas del nivel 3
     float velocidadScroll;
     float distanciaRecorrida;
     QElapsedTimer timerNivel;
-    QList<QRectF> obstaculos;       // Hitboxes de colisión
-    QList<QRectF> spriteRects;      // Rectángulos de dibujo
+    QList<QRectF> obstaculos;
+    QList<QRectF> spriteRects;
     QList<int> tiposObstaculos;
     QList<QRectF> powerUps;
-
-    // Configuración
     float tiempoObjetivo;
     float spawnRate;
     float tiempoDesdeUltimoSpawn;
-
-    // Animación
     int frameAnimacion;
     float tiempoAnimacion;
-
-    // Jugador específico para nivel 3
     JugadorNivel3* jugadorN3;
-
-    // Estados del juego
     bool nivelCompletado;
     bool juegoActivo;
-
     QList<QPair<float, int>> milestonesObstaculos;
     QList<int> getObstaculosDisponibles();
 };

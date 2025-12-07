@@ -15,17 +15,15 @@ JugadorNivel2::JugadorNivel2() : JugadorBase()
 
 void JugadorNivel2::actualizar(float deltaTime)
 {
-    // Resetear estado de movimiento
     seEstaMoviendo = false;
     direccionActual = 0;
 
-    // Verificar teclas presionadas y mover
-    if (teclasPresionadas[0]) {  // Izquierda
+    if (teclasPresionadas[0]) {
         moverIzquierda();
         seEstaMoviendo = true;
         direccionActual = -1;
     }
-    if (teclasPresionadas[1]) {  // Derecha
+    if (teclasPresionadas[1]) {
         moverDerecha();
         seEstaMoviendo = true;
         direccionActual = 1;
@@ -68,11 +66,9 @@ void JugadorNivel2::resetear()
 
 QRectF JugadorNivel2::getAreaColision() const
 {
-    // Área de colisión específica para JugadorNivel2
     return QRectF(posicion.x() - 15, posicion.y() - 15, 30, 30);
 }
 
-// Implementación de métodos virtuales puros
 
 void JugadorNivel2::activarArmas()
 {

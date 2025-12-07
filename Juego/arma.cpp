@@ -166,17 +166,15 @@ void Arma::crearAtaqueAceite(const QPointF& posicion, const QPointF& direccion)
         dirLanzamiento = QPointF(0, -1);
     }
 
-    int numManchas = 1 + (nivel / 2); // Más manchas con nivel más alto
+    int numManchas = 1 + (nivel / 2);
     if(numManchas > 3) numManchas = 3;
 
     float distanciaBase = 80.0f;
-    float dispersion = 40.0f; // Qué tan dispersas están las manchas
+    float dispersion = 40.0f;
 
     for(int i = 0; i < numManchas; i++) {
-        // Calcular posición de cada mancha
         QPointF offset;
         if(numManchas > 1) {
-            // Patrón de dispersión
             float anguloDispersion = (i - (numManchas-1)/2.0f) * 0.3f;
             QPointF dirDispersada(
                 std::cos(anguloDispersion) * dirLanzamiento.x() - std::sin(anguloDispersion) * dirLanzamiento.y(),
@@ -187,7 +185,6 @@ void Arma::crearAtaqueAceite(const QPointF& posicion, const QPointF& direccion)
             offset = dirLanzamiento * distanciaBase;
         }
 
-        // Añadir dispersión aleatoria
         offset += QPointF(
             (QRandomGenerator::global()->bounded(200) - 100) / 100.0f * dispersion,
             (QRandomGenerator::global()->bounded(200) - 100) / 100.0f * dispersion
@@ -239,13 +236,11 @@ void Arma::actualizarProyectiles(float deltaTime)
     float velocidadBase = 0.12f;
     float velocidad = velocidadBase * (1.0f + (nivel - 1) * 0.08f);
 
-    // Actualizar proyectiles lógicos
     for(int i = 0; i < proyectiles.size(); i++) {
         proyectiles[i] += direccionesProyectiles[i] * velocidad * deltaTime;
         tiemposVidaProyectiles[i] -= deltaTime;
     }
 
-    // Limpiar proyectiles expirados
     for(int i = proyectiles.size() - 1; i >= 0; i--) {
         if(tiemposVidaProyectiles[i] <= 0) {
             proyectiles.removeAt(i);

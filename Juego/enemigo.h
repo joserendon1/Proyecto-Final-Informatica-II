@@ -15,12 +15,11 @@ public:
     void seguirJugador(const QPointF& posicionJugador);
     void recibirDanio(float cantidad) override;
 
-    // Getters
     int getTipo() const { return tipo; }
     int getExperienciaQueDa() const { return experienciaQueDa; }
 
 private:
-    int tipo; // 1: débil, 2: fuerte
+    int tipo;
     int experienciaQueDa;
 };
 

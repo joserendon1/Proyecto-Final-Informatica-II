@@ -12,18 +12,15 @@ public:
     JugadorBase();
     virtual ~JugadorBase() = default;
 
-    // Métodos virtuales puros que deben implementar las clases derivadas
     virtual void actualizar(float deltaTime) = 0;
     virtual void procesarInput(const std::vector<bool>& teclas) = 0;
     virtual void activarArmas() = 0;
 
-    // Métodos virtuales con implementación por defecto
     virtual QRectF getAreaColision() const;
     virtual void ganarExperiencia(int exp);
     virtual void subirNivel();
     virtual int getExperienciaParaSiguienteNivel() const;
 
-    // Getters y setters comunes
     float getVida() const { return vida; }
     QPointF getPosicion() const { return posicion; }
     void setPosicion(const QPointF& nuevaPos) { posicion = nuevaPos; }
@@ -35,7 +32,6 @@ public:
     bool tieneMejoraPendiente() const { return mejoraPendiente; }
     void setMejoraPendiente(bool pendiente) { mejoraPendiente = pendiente; }
 
-    // Métodos virtuales para armas (implementados en clases específicas)
     virtual const QList<Arma*>& getArmas() const = 0;
     virtual bool tieneArma(Arma::Tipo tipo) const = 0;
     virtual void anadirArmaNueva(Arma::Tipo tipoArma) = 0;

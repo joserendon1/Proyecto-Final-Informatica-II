@@ -3,7 +3,6 @@
 
 #include <QString>
 
-// Forward declaration para evitar dependencia circular
 class JugadorNivel1;
 
 class Mejora
@@ -17,10 +16,7 @@ public:
     };
 
     Mejora(Tipo tipo, const QString& nombre, const QString& descripcion, int tipoArma = -1);
-
     void aplicar(JugadorNivel1* jugador) const;
-
-    // Getters
     QString getNombre() const { return nombre; }
     QString getDescripcion() const { return descripcion; }
     int getTipoArma() const { return tipoArma; }

@@ -11,7 +11,6 @@ JugadorNivel1::JugadorNivel1()
     posicion = QPointF(400, 300);
     ultimaDireccion = QPointF(0, -1);
 
-    // Inicializar vector de teclas (4 elementos para WASD)
     teclasPresionadas.resize(4, false);
 
     armas.append(new Arma(Arma::BALLESTA));

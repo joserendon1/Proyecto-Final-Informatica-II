@@ -39,14 +39,11 @@ private slots:
     void actualizarJuego();
 
 private:
-    // Declaración forward de la estructura Barril
     struct Barril;
-
     int frameAnimacionIdle;
     int frameAnimacionMove;
     float tiempoAnimacionIdle;
     float tiempoAnimacionMove;
-
     void setupNivel();
     void procesarColisiones();
     void limpiarBarriles();
@@ -58,45 +55,29 @@ private:
     void dibujarFondo(QPainter &painter);
     void dibujarFondoEnCapas(QPainter &painter);
     void dibujarSuelo(QPainter &painter);
-
-    // Métodos helper para dibujo
     void dibujarEntidadConSprite(QPainter &painter, const QPointF &posicion,
                                  const QString &spriteName, const QSize &displaySize,
                                  int frameWidth, int frameHeight, int currentFrame);
     void dibujarEntidadSimple(QPainter &painter, const QPointF &posicion,
                               const QSize &displaySize, const QColor &color);
-
     QTimer* timerJuego;
     QTimer* timerGeneracionBarriles;
     QElapsedTimer timerNivel;
-
     JugadorNivel2* jugador;
     QList<Barril> barriles;
-
-    // Animación
     int frameAnimacion;
     float tiempoAnimacion;
-
-    // Estadísticas
     int tiempoTranscurrido;
     int tiempoObjetivo;
     int barrilesEsquivados;
     int puntuacion;
-
-    // Estados
     bool enPausa;
     bool juegoIniciado;
     bool nivelCompletado;
-
-    // Configuración
     float spawnRate;
     float tiempoDesdeUltimoSpawn;
-
-    // Audio
     int cooldownSonidoMovimiento;
     bool jugadorSeEstaMoviendo;
-
-    // Constantes
     const int ANCHO_VENTANA = 800;
     const int ALTO_VENTANA = 600;
     const int SUELO_Y = 550;

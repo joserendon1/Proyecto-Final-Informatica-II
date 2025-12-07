@@ -12,11 +12,8 @@ AudioManager& AudioManager::getInstance()
 
 AudioManager::AudioManager() : QObject()
 {
-    //punteros a nullptr
     backgroundMusic = nullptr;
     musicOutput = nullptr;
-
-    // Inicializar volúmenes
     masterVolume = 1.0f;
     musicVolume = 0.7f;
     effectsVolume = 0.8f;
@@ -28,7 +25,6 @@ bool AudioManager::loadSounds()
 {
     qDebug() << "=== CARGANDO SONIDOS ===";
 
-    // VERIFICAR DISPOSITIVOS DE AUDIO PRIMERO
     QList<QAudioDevice> devices = QMediaDevices::audioOutputs();
     if (devices.isEmpty()) {
         qDebug() << "No se encontraron dispositivos de audio - Continuando sin audio";
@@ -51,12 +47,10 @@ bool AudioManager::loadSounds()
         QString musicPath = "qrc:/sounds/sounds/background_music.ogg";
         backgroundMusic->setSource(QUrl(musicPath));
 
-        // Esperar un momento para que cargue
         QThread::msleep(100);
 
         if (backgroundMusic->mediaStatus() == QMediaPlayer::NoMedia) {
             qDebug() << "No se pudo cargar la música de fondo";
-            // NO eliminar los objetos, solo marcar como fallido
         } else {
             qDebug() << "Música de fondo cargada correctamente";
             backgroundMusic->setLoops(QMediaPlayer::Infinite);
@@ -82,15 +76,10 @@ bool AudioManager::loadSounds()
             SoundEffect effect;
             effect.player = new QMediaPlayer(this);
             effect.output = new QAudioOutput(this);
-
-            // Configurar con manejo de errores
             effect.output->setDevice(QMediaDevices::defaultAudioOutput());
             effect.player->setAudioOutput(effect.output);
             effect.player->setSource(QUrl(it.value()));
-
-            // Pequeña pausa para la carga
             QThread::msleep(50);
-
             if (effect.player->mediaStatus() != QMediaPlayer::NoMedia) {
                 loadedCount++;
                 qDebug() << "Sonido cargado:" << it.key();
@@ -108,7 +97,6 @@ bool AudioManager::loadSounds()
 
     qDebug() << "=== CARGA COMPLETADA: " << loadedCount << "/" << soundFiles.size() << "sonidos ===";
 
-    // Considerar éxito incluso si solo algunos sonidos cargaron
     return loadedCount > 0 || backgroundMusic->mediaStatus() != QMediaPlayer::NoMedia;
 }
 
@@ -126,29 +114,24 @@ void AudioManager::playSound(const QString& soundName, float volume)
         return;
     }
 
-    // LIMITAR reproducciones muy seguidas del mismo sonido
     static QHash<QString, qint64> ultimaReproduccion;
     qint64 ahora = QDateTime::currentMSecsSinceEpoch();
 
     if (ultimaReproduccion.contains(soundName)) {
         qint64 diferencia = ahora - ultimaReproduccion[soundName];
-        if (diferencia < 100) { // Mínimo 100ms entre reproducciones del mismo sonido
+        if (diferencia < 100) {
             return;
         }
     }
 
     ultimaReproduccion[soundName] = ahora;
-
-    // Configurar volumen
     float finalVolume = volume * effectsVolume * masterVolume;
     effect.output->setVolume(finalVolume);
 
-    // Si ya se está reproduciendo, reiniciar
     if (effect.player->playbackState() == QMediaPlayer::PlayingState) {
         effect.player->stop();
     }
 
-    // Reiniciar y reproducir
     effect.player->setPosition(0);
     effect.player->play();
 
@@ -167,10 +150,8 @@ void AudioManager::stopAllSounds()
 {
     qDebug() << "Deteniendo todos los sonidos...";
 
-    // Detener música de fondo
     stopBackgroundMusic();
 
-    // Detener todos los efectos de sonido
     stopAllEffects();
 
     qDebug() << "Todos los sonidos detenidos";
@@ -183,7 +164,7 @@ void AudioManager::stopAllEffects()
     for (auto& sound : soundEffects) {
         if (sound.player && sound.player->playbackState() == QMediaPlayer::PlayingState) {
             sound.player->stop();
-            sound.player->setPosition(0); // Reiniciar a inicio
+            sound.player->setPosition(0);
         }
     }
 
@@ -196,7 +177,6 @@ void AudioManager::cleanUp()
 
     stopAllSounds();
 
-    // Limpiar efectos de sonido
     for (auto& sound : soundEffects) {
         if (sound.player) {
             sound.player->stop();
@@ -208,7 +188,6 @@ void AudioManager::cleanUp()
     }
     soundEffects.clear();
 
-    // Limpiar música
     if (backgroundMusic) {
         backgroundMusic->stop();
         delete backgroundMusic;
@@ -226,10 +205,8 @@ void AudioManager::resetForNewLevel()
 {
     qDebug() << "Reiniciando AudioManager para nuevo nivel...";
 
-    // Detener todo el audio actual
     stopAllSounds();
 
-    // Pequeño delay para asegurar que todo se detuvo
     QTimer::singleShot(100, [this]() {
         loadSounds();
         qDebug() << "AudioManager reiniciado para nuevo nivel";
@@ -256,13 +233,11 @@ void AudioManager::setEffectsVolume(float volume)
 
 void AudioManager::updateVolumes()
 {
-    // Actualizar volumen de música
     if (musicOutput) {
         musicOutput->setVolume(musicVolume * masterVolume);
         qDebug() << "Volumen música actualizado:" << musicVolume * masterVolume;
     }
 
-    // Actualizar volumen de efectos
     for (auto& effect : soundEffects) {
         if (effect.output) {
             effect.output->setVolume(effectsVolume * masterVolume);
@@ -322,7 +297,7 @@ void AudioManager::testAllSounds()
     for (auto it = soundEffects.begin(); it != soundEffects.end(); ++it) {
         qDebug() << "Probando:" << it.key();
         playSound(it.key(), 0.5f);
-        QThread::msleep(500); // Pequeña pausa entre sonidos
+        QThread::msleep(500);
     }
 
     qDebug() << "=== TEST COMPLETADO ===";

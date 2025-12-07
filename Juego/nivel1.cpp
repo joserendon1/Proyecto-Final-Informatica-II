@@ -30,22 +30,17 @@ Nivel1::Nivel1(QWidget *parent) : NivelBase(parent)
         qDebug() << "Música iniciada";
     }
 
-    // INICIALIZAR el mapa completamente
     inicializarMapaGrande();
 
-    //crear el jugador cuando el mapa ya está listo
     jugador = new JugadorNivel1();
 
-    // Configurar posición y cámara
     QPointF posicionInicial = mapa->getPosicionInicioJugador();
     jugador->setPosicion(posicionInicial);
     posicionCamara = posicionInicial - QPointF(tamanoVista.width()/2, tamanoVista.height()/2);
 
-    // Timer específico para oleadas
     timerOleadas = new QTimer(this);
     connect(timerOleadas, &QTimer::timeout, this, &Nivel1::generarOleada);
 
-    // Inicializar estado específico del nivel 1
     tiempoTranscurrido = 0;
     tiempoObjetivo = 60;
     numeroOleada = 1;
@@ -221,7 +216,6 @@ void Nivel1::actualizarJuego(float deltaTime)
         return;
     }
 
-    // ACTUALIZAR ARMAS DEL JUGADOR
     JugadorNivel1* jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
     if (jugadorN1 && !jugadorN1->getArmas().isEmpty()) {
         for(Arma* arma : jugadorN1->getArmas()) {
@@ -231,7 +225,6 @@ void Nivel1::actualizarJuego(float deltaTime)
         }
     }
 
-    // CONTADOR DE TIEMPO
     static float acumuladorTiempo = 0;
     acumuladorTiempo += deltaTime;
     if(acumuladorTiempo >= 1000) {
@@ -244,7 +237,6 @@ void Nivel1::actualizarJuego(float deltaTime)
         }
     }
 
-    // MOVIMIENTO DEL JUGADOR
     QPointF posicionAnterior = jugador->getPosicion();
     jugadorN1 = dynamic_cast<JugadorNivel1*>(jugador);
     if (jugadorN1) {
@@ -252,19 +244,15 @@ void Nivel1::actualizarJuego(float deltaTime)
     }
     jugador->actualizar(deltaTime);
 
-    // VERIFICAR COLISIONES DEL JUGADOR CON EL MAPA
     QRectF areaJugador = jugador->getAreaColision();
     if(!verificarColisionMapa(areaJugador)) {
         jugador->setPosicion(posicionAnterior);
     }
 
-    // MANTENER JUGADOR DENTRO DE LOS LÍMITES DEL MAPA
     verificarYCorregirLimitesMapa(jugador);
 
-    // ACTUALIZAR CÁMARA (método de NivelBase)
     actualizarCamara();
 
-    // SONIDO DE MOVIMIENTO
     static int moveSoundCooldown = 0;
     bool isMoving = (teclas[0] || teclas[1] || teclas[2] || teclas[3]);
 
@@ -276,18 +264,15 @@ void Nivel1::actualizarJuego(float deltaTime)
     if (moveSoundCooldown > 0) {
         moveSoundCooldown--;
     }
-    // ACTUALIZAR ENEMIGOS
     for(Enemigo *enemigo : enemigos) {
         if(enemigo && enemigo->estaViva()) {
             QPointF posicionAnteriorEnemigo = enemigo->getPosicion();
 
-            // SEGUIR AL JUGADOR SOLO SI ESTÁ CERCA
             float distanciaAlJugador = QLineF(enemigo->getPosicion(), jugador->getPosicion()).length();
             if(distanciaAlJugador < 2000.0f) {
                 enemigo->seguirJugador(jugador->getPosicion());
             }
 
-            // ACTUALIZAR ENEMIGO
             enemigo->actualizar(deltaTime);
 
             QRectF areaEnemigo = enemigo->getAreaColision();
@@ -295,28 +280,22 @@ void Nivel1::actualizarJuego(float deltaTime)
                 enemigo->setPosicion(posicionAnteriorEnemigo);
             }
 
-            // MANTENER ENEMIGO DENTRO DE LOS LÍMITES DEL MAPA
             verificarYCorregirLimitesMapa(enemigo);
         }
     }
 
-    // PROCESAR COLISIONES
     procesarColisiones();
 
-    // LIMPIAR ENEMIGOS MUERTOS
     limpiarEnemigosMuertos();
 
-    // ACTUALIZAR ANIMACIONES DEL MAPA
     if(mapa) {
         mapa->actualizarAnimaciones(deltaTime);
     }
 
-    // VERIFICAR MEJORAS PENDIENTES
     if(jugador->tieneMejoraPendiente() && !mostrandoMejoras) {
         mostrarOpcionesMejoras();
     }
 
-    // VERIFICAR FIN DEL NIVEL
     if(tiempoTranscurrido >= tiempoObjetivo) {
         if (timerJuego) timerJuego->stop();
         if (timerOleadas) timerOleadas->stop();
@@ -325,7 +304,6 @@ void Nivel1::actualizarJuego(float deltaTime)
         return;
     }
 
-    // VERIFICAR GAME OVER
     if(!jugador->estaViva()) {
         if (timerJuego) timerJuego->stop();
         if (timerOleadas) timerOleadas->stop();
@@ -415,9 +393,9 @@ void Nivel1::generarEnemigo()
     int probabilidadFuerte = qMin(15 + (numeroOleada - 1) * 8, 75);
 
     if(QRandomGenerator::global()->bounded(100) < probabilidadFuerte) {
-        tipoEnemigo = 2; // Fuerte
+        tipoEnemigo = 2;
     } else {
-        tipoEnemigo = 1; // Débil
+        tipoEnemigo = 1;
     }
 
     Enemigo *enemigo = new Enemigo(tipoEnemigo);
@@ -512,7 +490,6 @@ void Nivel1::procesarColisiones()
     static int cooldownGolpe = 0;
     bool sonidoGolpeReproducido = false;
 
-    // VERIFICAR COLISIONES CON ARMAS
     for(Arma* arma : jugadorN1->getArmas()) {
         if (!arma) continue;
 
@@ -524,18 +501,15 @@ void Nivel1::procesarColisiones()
                     !enemigosGolpeadosPorArmas.value(enemigo, false) &&
                     area.intersects(enemigo->getAreaColision())) {
 
-                    // APLICAR DAÑO
                     enemigo->recibirDanio(arma->getDanio());
                     enemigosGolpeadosPorArmas[enemigo] = true;
 
-                    // SONIDO GOLPE - Solo una vez por frame
                     if (!sonidoGolpeReproducido && cooldownGolpe <= 0) {
                         AudioManager::getInstance().playEnemyHit();
                         sonidoGolpeReproducido = true;
                         cooldownGolpe = 3; // Cooldown en frames
                     }
 
-                    // VERIFICAR SI EL ENEMIGO MURIÓ
                     if(!enemigo->estaViva()) {
                         jugador->ganarExperiencia(enemigo->getExperienciaQueDa());
                     }
@@ -544,10 +518,8 @@ void Nivel1::procesarColisiones()
         }
     }
 
-    // REDUCIR COOLDOWNS
     if (cooldownGolpe > 0) cooldownGolpe--;
 
-    // COLISIONES JUGADOR-ENEMIGO (DAÑO POR CONTACTO)
     for(Enemigo* enemigo : enemigos) {
         if(enemigo && enemigo->estaViva() &&
             jugador->getAreaColision().intersects(enemigo->getAreaColision())) {
@@ -574,7 +546,6 @@ void Nivel1::procesarSeleccionMejora(int opcion)
     mostrandoMejoras = false;
     opcionesMejorasActuales.clear();
 
-    // Pequeño delay antes de reanudar
     QTimer::singleShot(300, this, &Nivel1::onMejoraSeleccionada);
 }
 
@@ -607,7 +578,6 @@ void Nivel1::dibujarEntidadConSprite(QPainter &painter, const QPointF &posicionR
                            displaySize.width(), displaySize.height());
         painter.drawPixmap(displayRect, frame, frame.rect());
     } else {
-        // Fallback simple
         painter.setBrush(QBrush(QColor(255, 100, 100)));
         painter.setPen(QPen(Qt::white, 2));
         painter.drawEllipse(posicionRelativa, displaySize.width()/2, displaySize.height()/2);
@@ -622,18 +592,15 @@ void Nivel1::paintEvent(QPaintEvent *event)
 
     QRectF vistaCamara = getVistaCamara();
 
-    // DIBUJAR EL MAPA
     if(mapa && !mapa->getMapaCompleto().isNull()) {
         mapa->dibujar(painter, vistaCamara);
     } else {
         painter.fillRect(rect(), QBrush(QColor(80, 80, 120)));
     }
 
-    // DEBUG: Dibujar área de colisión del jugador
     QPointF playerPos = jugador->getPosicion();
     QPointF playerPosRelativa = playerPos - vistaCamara.topLeft();
 
-    // === ANIMACIÓN DEL JUGADOR  ===
     static int currentFrame = 0;
     static int animationCounter = 0;
 
@@ -673,13 +640,10 @@ void Nivel1::paintEvent(QPaintEvent *event)
         }
     }
 
-    // DIBUJAR ARMAS
     dibujarArmas(painter);
 
-    // DIBUJAR HUD MEJORADO
     dibujarHUD(painter);
 
-    // Dibujar menú de mejoras si está activo
     if (mostrandoMejoras) {
         dibujarMenuMejoras(painter);
     }
@@ -754,8 +718,6 @@ void Nivel1::dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::Area
 
         QPointF centro = areaRelativa.center();
         painter.translate(centro);
-
-        // Para el aceite, usar el tamaño del área pero mantener la relación de aspecto
         float radio = areaRelativa.width() / 2;
         QRectF destRect(-radio, -radio, radio * 2, radio * 2);
 
@@ -763,7 +725,6 @@ void Nivel1::dibujarAtaqueAceite(QPainter &painter, Arma* arma, const Arma::Area
         painter.restore();
 
     } else {
-        // Fallback: dibujo geométrico
         QColor colorArma = arma->getColor();
         painter.setBrush(QBrush(colorArma, Qt::DiagCrossPattern));
         painter.setPen(QPen(colorArma.darker(), 2));
@@ -850,7 +811,6 @@ void Nivel1::dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const 
 {
     float vidaPorcentaje = enemigo->getVida() / (enemigo->getTipo() == 1 ? 25.0f : 70.0f);
 
-    // Barra de vida sobre el enemigo (usando posición relativa)
     QRectF barraFondo(posicionRelativa.x() - 15, posicionRelativa.y() - 30, 30, 4);
     QRectF barraVida(posicionRelativa.x() - 15, posicionRelativa.y() - 30, 30 * vidaPorcentaje, 4);
 
@@ -858,7 +818,6 @@ void Nivel1::dibujarBarraVidaEnemigo(QPainter &painter, Enemigo *enemigo, const 
     painter.setPen(Qt::NoPen);
     painter.drawRect(barraFondo);
 
-    // Color según tipo
     if(enemigo->getTipo() == 1) {
         painter.setBrush(QBrush(QColor(255, 100, 100)));
     } else {

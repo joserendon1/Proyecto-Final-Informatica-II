@@ -9,15 +9,10 @@ class Entidad
 public:
     Entidad();
     virtual ~Entidad() = default;
-
-    // Métodos virtuales puros para clases derivadas
     virtual void actualizar(float deltaTime) = 0;
-
-    // Métodos comunes con implementación base
     virtual void mover(const QPointF& direccion);
     virtual void recibirDanio(float cantidad);
 
-    // Getters y setters
     QPointF getPosicion() const { return posicion; }
     void setPosicion(const QPointF& nuevaPosicion) { posicion = nuevaPosicion; }
 

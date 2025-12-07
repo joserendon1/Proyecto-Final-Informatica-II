@@ -37,8 +37,8 @@ Nivel3::~Nivel3()
 QSize Nivel3::obtenerDimensionesSprite(int tipoObstaculo)
 {
     switch (tipoObstaculo) {
-    case 1: return QSize(64, 128);   // obstacle1 (alto)
-    case 3: return QSize(64, 64);    // obstacle3 (bajo)
+    case 1: return QSize(64, 128);
+    case 3: return QSize(64, 64);
     default: return QSize(64, 128);
     }
 }
@@ -77,7 +77,6 @@ void Nivel3::setupNivel()
     jugadorN3 = new JugadorNivel3();
     jugador = jugadorN3;
 
-    // Posición del jugador
     jugadorN3->setPosicion(QPointF(100, 450));
 
     posicionCamara = QPointF(0, 0);
@@ -176,7 +175,7 @@ void Nivel3::actualizarCamaraAutoScroll()
 }
 
 QList<int> Nivel3::getObstaculosDisponibles() {
-    QList<int> disponibles = {1}; // obstacle1 siempre disponible
+    QList<int> disponibles = {1};
 
     for (const auto& milestone : milestonesObstaculos) {
         if (distanciaRecorrida >= milestone.first) {

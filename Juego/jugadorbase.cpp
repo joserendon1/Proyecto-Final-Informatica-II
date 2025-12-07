@@ -3,13 +3,11 @@
 
 JugadorBase::JugadorBase()
 {
-    // Inicialización base común
     vida = 100.0f;
     velocidad = 2.0f;
     posicion = QPointF(400, 300);
     ultimaDireccion = QPointF(0, -1);
 
-    // Tamaño base del vector de teclas
     teclasPresionadas.resize(4, false);
 }
 

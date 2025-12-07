@@ -37,7 +37,6 @@ public:
     int getNivel() const { return nivel; }
     void subirNivel();
 
-    //MÉTODOS PARA SPRITES
     struct ProyectilSprite {
         QPointF posicion;
         QPointF direccion;
