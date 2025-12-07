@@ -35,7 +35,7 @@ public:
     void playLevelUp();
     void playPlayerHurt();
 
-    // NUEVOS MÉTODOS DE LIMPIEZA
+    //MÉTODOS DE LIMPIEZA
     void stopAllSounds();
     void stopAllEffects();
     void cleanUp();

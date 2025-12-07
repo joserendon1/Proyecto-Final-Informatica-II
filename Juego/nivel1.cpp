@@ -33,7 +33,7 @@ Nivel1::Nivel1(QWidget *parent) : NivelBase(parent)
     // INICIALIZAR el mapa completamente
     inicializarMapaGrande();
 
-    // AHORA crear el jugador cuando el mapa ya está listo
+    //crear el jugador cuando el mapa ya está listo
     jugador = new JugadorNivel1();
 
     // Configurar posición y cámara
@@ -97,7 +97,7 @@ void Nivel1::iniciarNivel()
 void Nivel1::inicializarMapaGrande()
 {
     QSize tamanoMapa(1024 * 5, 768 * 5);
-    qDebug() << "🗺️ Creando mapa 5120x3840 (5x 1024x768)";
+    qDebug() << "Creando mapa 5120x3840 (5x 1024x768)";
 
     mapa->crearMapaGrande(tamanoMapa);
 
@@ -207,7 +207,7 @@ void Nivel1::mostrarOpcionesMejoras()
 
     opcionesMejorasActuales = generarOpcionesMejoras(3);
 
-    qDebug() << "🎯 Menú de mejoras activado - Opciones:" << opcionesMejorasActuales.size();
+    qDebug() << "Menú de mejoras activado - Opciones:" << opcionesMejorasActuales.size();
 }
 
 void Nivel1::actualizarJuego(float deltaTime)
@@ -264,7 +264,7 @@ void Nivel1::actualizarJuego(float deltaTime)
     // ACTUALIZAR CÁMARA (método de NivelBase)
     actualizarCamara();
 
-    // SONIDO DE MOVIMIENTO MEJORADO
+    // SONIDO DE MOVIMIENTO
     static int moveSoundCooldown = 0;
     bool isMoving = (teclas[0] || teclas[1] || teclas[2] || teclas[3]);
 
@@ -290,7 +290,6 @@ void Nivel1::actualizarJuego(float deltaTime)
             // ACTUALIZAR ENEMIGO
             enemigo->actualizar(deltaTime);
 
-            // VERIFICAR COLISIONES DEL ENEMIGO CON EL MAPA
             QRectF areaEnemigo = enemigo->getAreaColision();
             if(!verificarColisionMapa(areaEnemigo)) {
                 enemigo->setPosicion(posicionAnteriorEnemigo);
@@ -301,7 +300,7 @@ void Nivel1::actualizarJuego(float deltaTime)
         }
     }
 
-    // PROCESAR COLISIONES (CON CONTROL DE SONIDOS)
+    // PROCESAR COLISIONES
     procesarColisiones();
 
     // LIMPIAR ENEMIGOS MUERTOS
@@ -487,7 +486,7 @@ void Nivel1::generarEnemigo()
         posicion.setX(qMax(limitesMapa.left() + 10.0f, qMin(posicion.x(), limitesMapa.right() - 10.0f)));
         posicion.setY(qMax(limitesMapa.top() + 10.0f, qMin(posicion.y(), limitesMapa.bottom() - 10.0f)));
 
-        qDebug() << "⚠️ Enemigo spawn en posición de emergencia:" << posicion;
+        qDebug() << "Enemigo spawn en posición de emergencia:" << posicion;
     }
 
     enemigo->setPosicion(posicion);
@@ -496,7 +495,7 @@ void Nivel1::generarEnemigo()
     static int enemigoCounter = 0;
     enemigoCounter++;
     if(enemigoCounter % 10 == 0) {
-        qDebug() << "👹 Enemigo" << enemigoCounter << "spawn en:" << posicion
+        qDebug() << "Enemigo" << enemigoCounter << "spawn en:" << posicion
                  << "Tipo:" << tipoEnemigo << "Vista:" << vistaActual.topLeft();
     }
 }
@@ -510,8 +509,6 @@ void Nivel1::procesarColisiones()
 
     QHash<Enemigo*, bool> enemigosGolpeadosPorArmas;
 
-    // ELIMINAR la reproducción de sonido de flecha aquí
-    // Solo mantener el sonido de golpe si quieres
     static int cooldownGolpe = 0;
     bool sonidoGolpeReproducido = false;
 
@@ -526,9 +523,6 @@ void Nivel1::procesarColisiones()
                 if(enemigo && enemigo->estaViva() &&
                     !enemigosGolpeadosPorArmas.value(enemigo, false) &&
                     area.intersects(enemigo->getAreaColision())) {
-
-                    // ELIMINADO: Sonido de flecha aquí
-                    // SOLO mantener sonido de impacto/golpe
 
                     // APLICAR DAÑO
                     enemigo->recibirDanio(arma->getDanio());
@@ -639,7 +633,7 @@ void Nivel1::paintEvent(QPaintEvent *event)
     QPointF playerPos = jugador->getPosicion();
     QPointF playerPosRelativa = playerPos - vistaCamara.topLeft();
 
-    // === ANIMACIÓN DEL JUGADOR SIMPLIFICADA ===
+    // === ANIMACIÓN DEL JUGADOR  ===
     static int currentFrame = 0;
     static int animationCounter = 0;
 
@@ -650,12 +644,10 @@ void Nivel1::paintEvent(QPaintEvent *event)
         animationCounter = 0;
     }
 
-    // *** SIMPLIFICADO: Usar método helper para dibujar jugador ***
     QString playerSprite = isMoving ? "player_move" : "player_idle";
     dibujarEntidadConSprite(painter, playerPosRelativa, playerSprite,
                             QSize(80, 80), 192, 192, currentFrame);
 
-    // *** SIMPLIFICADO: Dibujar enemigos con método helper ***
     int enemyFrame = (QDateTime::currentMSecsSinceEpoch() / 150) % 6;
     int enemigosEnVista = 0;
 
@@ -687,7 +679,7 @@ void Nivel1::paintEvent(QPaintEvent *event)
     // DIBUJAR HUD MEJORADO
     dibujarHUD(painter);
 
-    // NUEVO: Dibujar menú de mejoras si está activo
+    // Dibujar menú de mejoras si está activo
     if (mostrandoMejoras) {
         dibujarMenuMejoras(painter);
     }

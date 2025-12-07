@@ -108,7 +108,7 @@ void JugadorNivel1::ganarExperiencia(int exp)
     experiencia += expBase;
 
     if(expBase >= 25 || nivel % 2 == 0) {
-        qDebug() << "📈 +" << expBase << "EXP - Total:" << experiencia
+        qDebug() << "+" << expBase << "EXP - Total:" << experiencia
                  << "/" << getExperienciaParaSiguienteNivel();
     }
 
@@ -134,8 +134,8 @@ void JugadorNivel1::subirNivel()
 
     mejoraPendiente = true;
 
-    qDebug() << "🎉 ¡Subiste al nivel" << nivel << "!";
-    qDebug() << "📊 Próximo nivel en:" << getExperienciaParaSiguienteNivel() << "EXP";
+    qDebug() << "Subiste al nivel" << nivel;
+    qDebug() << "Proximo nivel en:" << getExperienciaParaSiguienteNivel() << "EXP";
 }
 
 int JugadorNivel1::getExperienciaParaSiguienteNivel() const {
@@ -163,7 +163,7 @@ void JugadorNivel1::anadirArmaNueva(Arma::Tipo tipoArma) {
         for (Arma* arma : armas) {
             if (arma->getTipo() == tipoArma) {
                 arma->subirNivel();
-                qDebug() << "¡" << arma->getNombre() << " mejorada a nivel" << arma->getNivel() << "!";
+                qDebug() << arma->getNombre() << " mejorada a nivel" << arma->getNivel();
                 break;
             }
         }
@@ -174,7 +174,7 @@ void JugadorNivel1::anadirArmaNueva(Arma::Tipo tipoArma) {
     nuevaArma->setReferenciasJugador(&posicion, &ultimaDireccion);
     armas.append(nuevaArma);
 
-    qDebug() << "¡Nueva arma añadida:" << nuevaArma->getNombre() << "!";
+    qDebug() << "Nueva arma añadida:" << nuevaArma->getNombre();
 }
 
 bool JugadorNivel1::tieneArma(Arma::Tipo tipo) const {

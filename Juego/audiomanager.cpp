@@ -12,7 +12,7 @@ AudioManager& AudioManager::getInstance()
 
 AudioManager::AudioManager() : QObject()
 {
-    // Inicializar punteros a nullptr
+    //punteros a nullptr
     backgroundMusic = nullptr;
     musicOutput = nullptr;
 
@@ -21,7 +21,7 @@ AudioManager::AudioManager() : QObject()
     musicVolume = 0.7f;
     effectsVolume = 0.8f;
 
-    qDebug() << "🔊 AudioManager creado";
+    qDebug() << "AudioManager creado";
 }
 
 bool AudioManager::loadSounds()
@@ -31,13 +31,12 @@ bool AudioManager::loadSounds()
     // VERIFICAR DISPOSITIVOS DE AUDIO PRIMERO
     QList<QAudioDevice> devices = QMediaDevices::audioOutputs();
     if (devices.isEmpty()) {
-        qDebug() << "❌ No se encontraron dispositivos de audio - Continuando sin audio";
+        qDebug() << "No se encontraron dispositivos de audio - Continuando sin audio";
         return false;
     }
 
     qDebug() << "Dispositivos de audio disponibles:" << devices.size();
 
-    // INICIALIZAR PUNTEROS CON SEGURIDAD
     if (!backgroundMusic) {
         backgroundMusic = new QMediaPlayer(this);
     }
@@ -45,7 +44,6 @@ bool AudioManager::loadSounds()
         musicOutput = new QAudioOutput(this);
     }
 
-    // CONFIGURAR MÚSICA CON VERIFICACIÓN DE ERRORES
     try {
         musicOutput->setDevice(QMediaDevices::defaultAudioOutput());
         backgroundMusic->setAudioOutput(musicOutput);
@@ -57,18 +55,17 @@ bool AudioManager::loadSounds()
         QThread::msleep(100);
 
         if (backgroundMusic->mediaStatus() == QMediaPlayer::NoMedia) {
-            qDebug() << "❌ No se pudo cargar la música de fondo";
+            qDebug() << "No se pudo cargar la música de fondo";
             // NO eliminar los objetos, solo marcar como fallido
         } else {
-            qDebug() << "✅ Música de fondo cargada correctamente";
+            qDebug() << "Música de fondo cargada correctamente";
             backgroundMusic->setLoops(QMediaPlayer::Infinite);
             musicOutput->setVolume(musicVolume * masterVolume);
         }
     } catch (...) {
-        qDebug() << "❌ Excepción al cargar música de fondo";
+        qDebug() << "Excepción al cargar música de fondo";
     }
 
-    // CARGAR EFECTOS DE SONIDO CON MÁS SEGURIDAD
     QMap<QString, QString> soundFiles = {
         {"arrow_shot", "qrc:/sounds/sounds/arrow_shot.ogg"},
         {"player_move", "qrc:/sounds/sounds/player_move.ogg"},
@@ -96,16 +93,16 @@ bool AudioManager::loadSounds()
 
             if (effect.player->mediaStatus() != QMediaPlayer::NoMedia) {
                 loadedCount++;
-                qDebug() << "✅ Sonido cargado:" << it.key();
+                qDebug() << "Sonido cargado:" << it.key();
                 effect.output->setVolume(effectsVolume * masterVolume);
                 soundEffects[it.key()] = effect;
             } else {
-                qDebug() << "❌ No se pudo cargar:" << it.key();
+                qDebug() << "No se pudo cargar:" << it.key();
                 delete effect.player;
                 delete effect.output;
             }
         } catch (...) {
-            qDebug() << "❌ Excepción al cargar sonido:" << it.key();
+            qDebug() << "Excepción al cargar sonido:" << it.key();
         }
     }
 
@@ -118,15 +115,14 @@ bool AudioManager::loadSounds()
 void AudioManager::playSound(const QString& soundName, float volume)
 {
     if (!soundEffects.contains(soundName)) {
-        qDebug() << "⚠️ Sonido no encontrado:" << soundName;
+        qDebug() << "Sonido no encontrado:" << soundName;
         return;
     }
 
     SoundEffect& effect = soundEffects[soundName];
 
-    // Verificar que el sonido esté cargado
     if (effect.player->source().isEmpty()) {
-        qDebug() << "⚠️ Sonido" << soundName << "no tiene fuente cargada";
+        qDebug() << " Sonido" << soundName << "no tiene fuente cargada";
         return;
     }
 
@@ -156,20 +152,20 @@ void AudioManager::playSound(const QString& soundName, float volume)
     effect.player->setPosition(0);
     effect.player->play();
 
-    qDebug() << "🔊 Reproduciendo:" << soundName << "volumen:" << finalVolume;
+    qDebug() << "Reproduciendo:" << soundName << "volumen:" << finalVolume;
 }
 
 void AudioManager::stopSound(const QString& soundName)
 {
     if (soundEffects.contains(soundName)) {
         soundEffects[soundName].player->stop();
-        qDebug() << "🔊 Sonido detenido:" << soundName;
+        qDebug() << "Sonido detenido:" << soundName;
     }
 }
 
 void AudioManager::stopAllSounds()
 {
-    qDebug() << "🔊 Deteniendo todos los sonidos...";
+    qDebug() << "Deteniendo todos los sonidos...";
 
     // Detener música de fondo
     stopBackgroundMusic();
@@ -177,12 +173,12 @@ void AudioManager::stopAllSounds()
     // Detener todos los efectos de sonido
     stopAllEffects();
 
-    qDebug() << "🔊 Todos los sonidos detenidos";
+    qDebug() << "Todos los sonidos detenidos";
 }
 
 void AudioManager::stopAllEffects()
 {
-    qDebug() << "🔊 Deteniendo todos los efectos de sonido...";
+    qDebug() << "Deteniendo todos los efectos de sonido...";
 
     for (auto& sound : soundEffects) {
         if (sound.player && sound.player->playbackState() == QMediaPlayer::PlayingState) {
@@ -191,12 +187,12 @@ void AudioManager::stopAllEffects()
         }
     }
 
-    qDebug() << "🔊 Todos los efectos de sonido detenidos";
+    qDebug() << "Todos los efectos de sonido detenidos";
 }
 
 void AudioManager::cleanUp()
 {
-    qDebug() << "🔊 Limpiando AudioManager...";
+    qDebug() << "Limpiando AudioManager...";
 
     stopAllSounds();
 
@@ -223,12 +219,12 @@ void AudioManager::cleanUp()
         musicOutput = nullptr;
     }
 
-    qDebug() << "🔊 AudioManager limpiado completamente";
+    qDebug() << "AudioManager limpiado completamente";
 }
 
 void AudioManager::resetForNewLevel()
 {
-    qDebug() << "🔊 Reiniciando AudioManager para nuevo nivel...";
+    qDebug() << "Reiniciando AudioManager para nuevo nivel...";
 
     // Detener todo el audio actual
     stopAllSounds();
@@ -236,7 +232,7 @@ void AudioManager::resetForNewLevel()
     // Pequeño delay para asegurar que todo se detuvo
     QTimer::singleShot(100, [this]() {
         loadSounds();
-        qDebug() << "🔊 AudioManager reiniciado para nuevo nivel";
+        qDebug() << "AudioManager reiniciado para nuevo nivel";
     });
 }
 
@@ -263,7 +259,7 @@ void AudioManager::updateVolumes()
     // Actualizar volumen de música
     if (musicOutput) {
         musicOutput->setVolume(musicVolume * masterVolume);
-        qDebug() << "🎵 Volumen música actualizado:" << musicVolume * masterVolume;
+        qDebug() << "Volumen música actualizado:" << musicVolume * masterVolume;
     }
 
     // Actualizar volumen de efectos
@@ -273,16 +269,16 @@ void AudioManager::updateVolumes()
         }
     }
 
-    qDebug() << "🔊 Volumen efectos actualizado:" << effectsVolume * masterVolume;
+    qDebug() << "Volumen efectos actualizado:" << effectsVolume * masterVolume;
 }
 
 void AudioManager::playBackgroundMusic()
 {
     if (backgroundMusic && !backgroundMusic->source().isEmpty()) {
-        qDebug() << "🎵 Iniciando música de fondo";
+        qDebug() << "Iniciando música de fondo";
         backgroundMusic->play();
     } else {
-        qDebug() << "❌ No se puede reproducir música de fondo - no cargada";
+        qDebug() << "No se puede reproducir música de fondo - no cargada";
     }
 }
 
@@ -290,7 +286,7 @@ void AudioManager::stopBackgroundMusic()
 {
     if (backgroundMusic) {
         backgroundMusic->stop();
-        qDebug() << "🎵 Música de fondo detenida";
+        qDebug() << "Música de fondo detenida";
     }
 }
 

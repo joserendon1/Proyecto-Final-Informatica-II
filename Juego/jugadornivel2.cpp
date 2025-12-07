@@ -1,37 +1,34 @@
 #include "jugadornivel2.h"
+#include "arma.h"
 #include <QRectF>
+#include <algorithm>
 
-JugadorNivel2::JugadorNivel2()
+JugadorNivel2::JugadorNivel2() : JugadorBase()
 {
     posicion = QPointF(400, 500);
+    velocidad = 3.0f;
     teclasPresionadas.resize(4, false);
     seEstaMoviendo = false;
     direccionActual = 0;
+    vida = 100.0f;
 }
 
 void JugadorNivel2::actualizar(float deltaTime)
 {
-    Q_UNUSED(deltaTime);
-
     // Resetear estado de movimiento
     seEstaMoviendo = false;
     direccionActual = 0;
 
-    // Verificar teclas presionadas
-    if (teclasPresionadas[0]) {
+    // Verificar teclas presionadas y mover
+    if (teclasPresionadas[0]) {  // Izquierda
         moverIzquierda();
         seEstaMoviendo = true;
         direccionActual = -1;
     }
-    if (teclasPresionadas[1]) {
+    if (teclasPresionadas[1]) {  // Derecha
         moverDerecha();
         seEstaMoviendo = true;
         direccionActual = 1;
-    }
-
-    // Si ambas teclas están presionadas, mantener la última dirección
-    if (teclasPresionadas[0] && teclasPresionadas[1]) {
-        // Mantener la dirección anterior o elegir una por defecto
     }
 }
 
@@ -44,32 +41,62 @@ void JugadorNivel2::procesarInput(const std::vector<bool>& teclas)
 
 void JugadorNivel2::moverDerecha()
 {
-    float nuevaX = posicion.x() + velocidadMovimientoHorizontal;
+    float nuevaX = posicion.x() + velocidad;
     if (nuevaX <= limiteDerecho) {
         posicion.setX(nuevaX);
+        ultimaDireccion = QPointF(1, 0);
     }
 }
 
 void JugadorNivel2::moverIzquierda()
 {
-    float nuevaX = posicion.x() - velocidadMovimientoHorizontal;
+    float nuevaX = posicion.x() - velocidad;
     if (nuevaX >= limiteIzquierdo) {
         posicion.setX(nuevaX);
+        ultimaDireccion = QPointF(-1, 0);
     }
 }
 
 void JugadorNivel2::resetear()
 {
-    posicion = QPointF(400, 520);  // Ajustado de (512, 650)
+    posicion = QPointF(400, 520);
     vida = 100.0f;
-    teclasPresionadas.clear();
-    teclasPresionadas.resize(4, false);
+    std::fill(teclasPresionadas.begin(), teclasPresionadas.end(), false);
     seEstaMoviendo = false;
     direccionActual = 0;
 }
 
 QRectF JugadorNivel2::getAreaColision() const
 {
-    // Área de colisión un poco más pequeña que el sprite para ser más permisivo
+    // Área de colisión específica para JugadorNivel2
     return QRectF(posicion.x() - 15, posicion.y() - 15, 30, 30);
+}
+
+// Implementación de métodos virtuales puros
+
+void JugadorNivel2::activarArmas()
+{
+
+}
+
+const QList<Arma*>& JugadorNivel2::getArmas() const
+{
+    return armas;
+}
+
+bool JugadorNivel2::tieneArma(Arma::Tipo tipo) const
+{
+    for (Arma* arma : armas) {
+        if (arma && arma->getTipo() == tipo) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void JugadorNivel2::anadirArmaNueva(Arma::Tipo tipoArma)
+{
+
+    Arma* nuevaArma = new Arma(tipoArma);
+    armas.append(nuevaArma);
 }

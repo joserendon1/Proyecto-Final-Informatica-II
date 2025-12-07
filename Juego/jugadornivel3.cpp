@@ -23,13 +23,11 @@ JugadorNivel3::JugadorNivel3()
     gravedadRapida = 2000.0f;   // Gravedad rápida para caída
     gravedad = gravedadNormal;  // Comienza con gravedad normal
 
-    qDebug() << "🎮 JugadorNivel3 creado - Gravedad rápida:" << gravedadRapida;
+    qDebug() << "JugadorNivel3 creado - Gravedad rápida:" << gravedadRapida;
 }
 
 JugadorNivel3::~JugadorNivel3()
 {
-    // Limpiar armas si las hubiera
-    // USAR for normal en lugar de range-for para evitar warning
     for (int i = 0; i < armas.size(); ++i) {
         delete armas[i];
     }
@@ -40,7 +38,6 @@ void JugadorNivel3::actualizar(float deltaTime)
 {
     float deltaSec = deltaTime / 1000.0f;
 
-    // DEBUG: Mostrar estado ocasionalmente
     static int debugCounter = 0;
     if (debugCounter++ % 60 == 0) {
         qDebug() << "Jugador actualizando - Saltando:" << estaSaltando
@@ -54,10 +51,8 @@ void JugadorNivel3::actualizar(float deltaTime)
         velocidadVertical += gravedad * deltaSec;
     }
 
-    // Actualizar posición vertical
     posicion.setY(posicion.y() + velocidadVertical * deltaSec);
 
-    // Verificar si llegó al suelo (530 es el suelo)
     if (posicion.y() >= 540.0f) {
         posicion.setY(540.0f);
         velocidadVertical = 0.0f;
@@ -98,7 +93,7 @@ void JugadorNivel3::saltar()
         gravedad = gravedadNormal; // Asegurar gravedad normal al saltar
         gravedadAumentada = false;
 
-        qDebug() << "🦘 Salto iniciado - VelVertical:" << velocidadVertical;
+        qDebug() << "Salto iniciado - VelVertical:" << velocidadVertical;
     }
 }
 
@@ -106,11 +101,11 @@ void JugadorNivel3::agacharse()
 {
     if (!estaSaltando && estaEnSuelo()) {
         estaAgachado = true;
-        qDebug() << "👇 Agachado en suelo";
+        qDebug() << "Agachado en suelo";
     } else if (estaSaltando) {
         // Si está saltando, aumentar gravedad para caer más rápido
         aumentarGravedad();
-        qDebug() << "🚀 Caída rápida activada durante salto";
+        qDebug() << "Caída rápida activada durante salto";
     }
 }
 
@@ -123,7 +118,7 @@ void JugadorNivel3::levantarse()
             gravedadAumentada = false;
             gravedad = gravedadNormal;
         }
-        qDebug() << "🔼 Levantado";
+        qDebug() << "Levantado";
     }
 }
 
@@ -137,9 +132,9 @@ void JugadorNivel3::cancelarSalto()
         // Si está muy arriba, dar un impulso hacia abajo
         if (posicion.y() < 400.0f) { // Si está por encima de 400px
             velocidadVertical = qMax(velocidadVertical, 300.0f); // Impulso hacia abajo mínimo
-            qDebug() << "💥 Cancelar salto - Impulso hacia abajo";
+            qDebug() << "Cancelar salto - Impulso hacia abajo";
         } else {
-            qDebug() << "💥 Cancelar salto - Gravedad aumentada";
+            qDebug() << "Cancelar salto - Gravedad aumentada";
         }
     }
 }
@@ -149,7 +144,7 @@ void JugadorNivel3::aumentarGravedad()
     if (estaSaltando && !gravedadAumentada) {
         gravedadAumentada = true;
         gravedad = gravedadRapida;
-        qDebug() << "⬇️ Gravedad aumentada a:" << gravedad;
+        qDebug() << "Gravedad aumentada a:" << gravedad;
     }
 }
 
@@ -163,12 +158,12 @@ void JugadorNivel3::moverVertical(float direccion)
 QRectF JugadorNivel3::getAreaColision() const
 {
     if (estaAgachado) {
-        return QRectF(posicion.x() - 20, posicion.y() - 8, 40, 16); // Más bajo y ancho
+        return QRectF(posicion.x() - 20, posicion.y() - 8, 40, 16);
     } else {
-        return QRectF(posicion.x() - 15, posicion.y() - 20, 30, 35); // Más bajo
+        return QRectF(posicion.x() - 15, posicion.y() - 20, 30, 35);
     }
 }
 
 bool JugadorNivel3::estaEnSuelo() const {
-    return posicion.y() >= 530.0f - 0.1f; // Ajustado a la nueva posición
+    return posicion.y() >= 530.0f - 0.1f;
 }

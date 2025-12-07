@@ -82,7 +82,7 @@ bool NivelBase::estaEnVista(const QRectF& area) const
 
 void NivelBase::keyPressEvent(QKeyEvent *event)
 {
-    // Input base común (WASD)
+    // Input base(WASD)
     switch(event->key()) {
     case Qt::Key_W: teclas[0] = true; break;
     case Qt::Key_A: teclas[1] = true; break;

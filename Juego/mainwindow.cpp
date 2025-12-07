@@ -27,17 +27,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     setWindowTitle("Último Bastión");
 
-    // Tamaño final más pequeño y cuadrado
-    int anchoVentana = 800;    // Reducido de 960
-    int altoVentana = 600;     // Reducido de 720 (mantiene relación 4:3)
+    int anchoVentana = 800;
+    int altoVentana = 600;
 
     setFixedSize(anchoVentana, altoVentana);
 
-    // Centrar en pantalla
     QScreen *screen = QGuiApplication::primaryScreen();
     QRect screenGeometry = screen->geometry();
     int x = (screenGeometry.width() - anchoVentana) / 2;
-    int y = (screenGeometry.height() - altoVentana) / 4; // Un poco más arriba
+    int y = (screenGeometry.height() - altoVentana) / 4;
     move(x, y);
 
     setFocusPolicy(Qt::StrongFocus);
@@ -45,7 +43,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupMenu();
     setupStatusBar();
 
-    // Mostrar menú principal al inicio
     mostrarMenuPrincipal();
 
     qDebug() << "Ventana configurada - 800x600 fija";
@@ -64,7 +61,6 @@ void MainWindow::mostrarMenuPrincipal()
     menuPrincipal = new MainMenu(this);
     setCentralWidget(menuPrincipal);
 
-    // Conectar señales del menú principal
     connect(menuPrincipal, &MainMenu::nivel1Seleccionado, this, &MainWindow::iniciarNivel1);
     connect(menuPrincipal, &MainMenu::nivel2Seleccionado, this, &MainWindow::iniciarNivel2);
     connect(menuPrincipal, &MainMenu::nivel3Seleccionado, this, &MainWindow::iniciarNivel3);

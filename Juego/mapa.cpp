@@ -16,7 +16,7 @@ Mapa::~Mapa()
 
 void Mapa::cargarSpritesMapa()
 {
-    // Cargar sprites (código igual que antes)
+    // Cargar sprites
     spriteSuelo = QPixmap(":/map/maps/ground.png");
     spriteHouse = QPixmap(":/map/maps/House.png");
     spriteTower = QPixmap(":/map/maps/Tower.png");

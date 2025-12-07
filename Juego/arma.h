@@ -13,13 +13,13 @@ class Arma : public QObject
     Q_OBJECT
 
 public:
-    enum Tipo { BALLESTA, ACEITE, ARCO, CATAPULTA, MAGICA }; // AÑADIDOS tipos de torre
+    enum Tipo { BALLESTA, ACEITE, ARCO, CATAPULTA, MAGICA };
 
     Arma(Tipo tipo);
     virtual ~Arma();
 
-    virtual void activar(const QPointF& posicion, const QPointF& direccion = QPointF(0, -1)); // AÑADIDO virtual
-    virtual void actualizar(float deltaTime); // AÑADIDO virtual
+    virtual void activar(const QPointF& posicion, const QPointF& direccion = QPointF(0, -1));
+    virtual void actualizar(float deltaTime);
     QList<QRectF> getAreasAtaque() const;
     bool puedeAtacar() const { return tiempoCooldownRestante <= 0; }
 

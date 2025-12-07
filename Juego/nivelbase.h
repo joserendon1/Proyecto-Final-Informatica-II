@@ -18,7 +18,7 @@ public:
     virtual void iniciarNivel();
     virtual void pausarNivel();
     virtual void reanudarNivel();
-    virtual void actualizarJuego(float deltaTime) = 0; // Solo esta declaración
+    virtual void actualizarJuego(float deltaTime) = 0;
 
     // Métodos comunes para todos los niveles
     void actualizarCamara();

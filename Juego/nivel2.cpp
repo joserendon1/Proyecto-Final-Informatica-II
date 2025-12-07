@@ -14,7 +14,7 @@ struct Nivel2::Barril {
     QPointF posicion;
     float velocidad;
     bool activo;
-    int tipoMovimiento; // 1: Caída lineal, 2: Oscilatorio, 3: Parabólico, 4: Caída con rebote
+    int tipoMovimiento; // 1: Caída lineal, 2: Oscilatorio, 3: Parabólico,
     float tiempoVida;   // Para animaciones
     float amplitud;     // Para movimiento oscilatorio
     float frecuencia;   // Para movimiento oscilatorio
@@ -28,19 +28,16 @@ struct Nivel2::Barril {
         amplitud(30.0f), frecuencia(2.0f), fase(0.0f),
         velocidadHorizontal(0.0f), gravedad(0.5f)
     {
-        // Configurar según tipo de movimiento
         QRandomGenerator* random = QRandomGenerator::global();
 
         if (tipoMovimiento == 2) { // Oscilatorio
-            // Usar generateDouble() para valores float
-            amplitud = 20.0f + static_cast<float>(random->generateDouble() * 30.0f); // [20, 50]
-            frecuencia = 1.0f + static_cast<float>(random->generateDouble() * 2.0f); // [1, 3]
-            fase = static_cast<float>(random->generateDouble() * 6.28f); // [0, 2π]
+            amplitud = 20.0f + static_cast<float>(random->generateDouble() * 30.0f);
+            frecuencia = 1.0f + static_cast<float>(random->generateDouble() * 2.0f);
+            fase = static_cast<float>(random->generateDouble() * 6.28f);
         }
         else if (tipoMovimiento == 3) { // Parabólico
-            // Usar bounded() con valores int para el rango [-3, 3]
-            velocidadHorizontal = -3.0f + random->bounded(7); // -3 + [0,6] = [-3,3]
-            gravedad = 0.3f + static_cast<float>(random->generateDouble() * 0.4f); // [0.3, 0.7]
+            velocidadHorizontal = -3.0f + random->bounded(7);
+            gravedad = 0.3f + static_cast<float>(random->generateDouble() * 0.4f);
         }
     }
 
@@ -165,7 +162,7 @@ void Nivel2::setupNivel()
     timerJuego->setInterval(16); // ~60 FPS
 
     timerGeneracionBarriles = new QTimer(this);
-    timerGeneracionBarriles->setInterval(1000); // Generar barril cada segundo inicialmente
+    timerGeneracionBarriles->setInterval(1000);
 
     connect(timerJuego, &QTimer::timeout, this, &Nivel2::actualizarJuego);
     connect(timerGeneracionBarriles, &QTimer::timeout, this, &Nivel2::generarBarril);
@@ -323,7 +320,6 @@ void Nivel2::actualizarJuego()
     procesarColisiones();
     limpiarBarriles();
 
-    // Aumentar dificultad - usar tiempo acumulado en lugar de cambiar timer
     tiempoDesdeUltimoSpawn += deltaTime;
 
     float tiempoEntreSpawn = 1.0f;
@@ -337,7 +333,6 @@ void Nivel2::actualizarJuego()
         tiempoEntreSpawn = 0.4f;
     }
 
-    // Generar barriles según el tiempo acumulado
     if (tiempoDesdeUltimoSpawn >= tiempoEntreSpawn) {
         generarBarril();
         tiempoDesdeUltimoSpawn = 0;
@@ -364,14 +359,11 @@ void Nivel2::actualizarAnimacion(float deltaTime)
     tiempoAnimacionIdle += deltaTime;
     tiempoAnimacionMove += deltaTime;
 
-    // CORREGIR: Usar valores de tiempo lógicos (0.1 segundos, no 100)
-    // Animación idle (8 frames, 8 FPS = 0.125 segundos por frame)
     if (tiempoAnimacionIdle > 0.125f) {
         frameAnimacionIdle = (frameAnimacionIdle + 1) % 8;
         tiempoAnimacionIdle = 0;
     }
 
-    // Animación move (6 frames, 10 FPS = 0.1 segundos por frame)
     if (tiempoAnimacionMove > 0.1f) {
         frameAnimacionMove = (frameAnimacionMove + 1) % 6;
         tiempoAnimacionMove = 0;
@@ -392,7 +384,6 @@ void Nivel2::generarBarril()
     float velocidadBase = 3.0f + (tiempoTranscurrido / 45.0f);
     velocidadBase = qMin(velocidadBase, 8.0f);
 
-    // Usar generateDouble() para valores float
     double randomFactor = random->generateDouble() * 0.5 + 0.75; // [0.75, 1.25]
     float velocidad = velocidadBase * static_cast<float>(randomFactor);
 
@@ -428,9 +419,7 @@ void Nivel2::procesarColisiones()
             QRectF areaBarril = barril.getAreaColision();
             QRectF areaJugador = jugador->getAreaColision();
 
-            // Verificar colisión con margen de tolerancia
             if (areaBarril.intersects(areaJugador)) {
-                // Verificar solapamiento real (no solo bounding boxes)
                 float distanciaX = std::abs(barril.posicion.x() - jugador->getPosicion().x());
                 float distanciaY = std::abs(barril.posicion.y() - jugador->getPosicion().y());
                 float radioTotal = 15.0f * (barril.tipoMovimiento == 3 ? 0.9f : 1.0f) + 15.0f;
@@ -452,13 +441,13 @@ void Nivel2::procesarColisiones()
                     barril.activo = false;
                     colisionDetectada = true;
 
-                    qDebug() << "💥 COLISIÓN REAL con barril tipo" << barril.tipoMovimiento
+                    qDebug() << "COLISIÓN REAL con barril tipo" << barril.tipoMovimiento
                              << "Posición barril:" << barril.posicion
                              << "Posición jugador:" << jugador->getPosicion()
                              << "Distancia:" << std::sqrt(distanciaX*distanciaX + distanciaY*distanciaY)
                              << "Daño:" << danio << "Vida restante:" << jugador->getVida();
                 } else {
-                    qDebug() << "⚠️ Colisión falsa detectada - distancia:"
+                    qDebug() << "Colisión falsa detectada - distancia:"
                              << std::sqrt(distanciaX*distanciaX + distanciaY*distanciaY)
                              << "radio total:" << radioTotal;
                 }
@@ -466,7 +455,6 @@ void Nivel2::procesarColisiones()
         }
     }
 
-    // Solo reproducir sonido si realmente hubo una colisión
     if (colisionDetectada) {
         AudioManager::getInstance().playPlayerHurt();
     }
@@ -513,11 +501,11 @@ void Nivel2::keyPressEvent(QKeyEvent *event)
     case Qt::Key_P:
     case Qt::Key_Escape:
         pausarNivel();
-        qDebug() << "⏸️ Nivel 2 pausado";
+        qDebug() << "Nivel 2 pausado";
         break;
     case Qt::Key_R:
         reanudarNivel();
-        qDebug() << "▶️ Nivel 2 reanudado";
+        qDebug() << "Nivel 2 reanudado";
         break;
     default:
         QWidget::keyPressEvent(event);
@@ -592,22 +580,18 @@ void Nivel2::dibujarEntidadConSprite(QPainter &painter, const QPointF &posicion,
     QPixmap spriteSheet = SpriteManager::getInstance().getSprite(spriteName);
 
     if(!spriteSheet.isNull()) {
-        // Verificar que el sprite esté cargado correctamente
         if (spriteSheet.isNull() || spriteSheet.width() == 0 || spriteSheet.height() == 0) {
-            qDebug() << "⚠️ Sprite" << spriteName << "no está cargado correctamente";
+            qDebug() << "Sprite" << spriteName << "no está cargado correctamente";
             dibujarEntidadSimple(painter, posicion, displaySize, QColor(255, 100, 100));
             return;
         }
 
-        // Calcular cuántos frames caben horizontalmente
         int framesPerRow = spriteSheet.width() / frameWidth;
         if (framesPerRow <= 0) framesPerRow = 1;
 
-        // Calcular fila y columna
         int row = currentFrame / framesPerRow;
         int col = currentFrame % framesPerRow;
 
-        // Verificar que el frame esté dentro de los límites
         int totalFramesVertical = spriteSheet.height() / frameHeight;
         if (row >= totalFramesVertical) {
             row = 0;
@@ -619,9 +603,8 @@ void Nivel2::dibujarEntidadConSprite(QPainter &painter, const QPointF &posicion,
                         frameWidth,
                         frameHeight);
 
-        // Verificar que el rectángulo esté dentro del sprite
         if (frameRect.right() > spriteSheet.width() || frameRect.bottom() > spriteSheet.height()) {
-            qDebug() << "⚠️ Frame rect fuera de límites, usando frame 0";
+            qDebug() << "Frame rect fuera de límites, usando frame 0";
             frameRect = QRect(0, 0, frameWidth, frameHeight);
         }
 
@@ -633,7 +616,7 @@ void Nivel2::dibujarEntidadConSprite(QPainter &painter, const QPointF &posicion,
         painter.drawPixmap(displayRect, frame, frame.rect());
 
     } else {
-        qDebug() << "⚠️ Sprite" << spriteName << "no encontrado, usando fallback";
+        qDebug() << "Sprite" << spriteName << "no encontrado, usando fallback";
         dibujarEntidadSimple(painter, posicion, displaySize, QColor(255, 100, 100));
     }
 }
@@ -662,32 +645,24 @@ void Nivel2::dibujarFondo(QPainter &painter)
 
 void Nivel2::dibujarFondoEnCapas(QPainter &painter)
 {
-    // Capa 1: fondo1 (fondo más lejano)
     QPixmap fondo1 = SpriteManager::getInstance().getSprite("fondo1");
     if (!fondo1.isNull()) {
-        // Dibujar fondo1 centrado y ajustado al tamaño de la ventana
         painter.drawPixmap(rect(), fondo1);
     } else {
-        // Fallback: gradiente azul
         QLinearGradient gradient(0, 0, 0, height());
         gradient.setColorAt(0, QColor(135, 206, 235));
         gradient.setColorAt(1, QColor(100, 180, 220));
         painter.fillRect(rect(), gradient);
     }
 
-    // Capa 2: fondo2 (fondo intermedio)
     QPixmap fondo2 = SpriteManager::getInstance().getSprite("fondo2");
     if (!fondo2.isNull()) {
-        // Dibujar fondo2 con un poco de desplazamiento para efecto de parallax
-        // Puedes ajustar el factor de desplazamiento según necesites
-        int offsetX = 0; // Cambia esto si quieres efecto parallax
+        int offsetX = 0;
         int offsetY = 0;
 
-        // Ajustar tamaño si es necesario
         QRectF fondo2Rect(offsetX, offsetY, width(), height());
         painter.drawPixmap(fondo2Rect, fondo2, fondo2.rect());
 
-        // Si el sprite es más pequeño que la pantalla, repetirlo
         if (fondo2.width() < width()) {
             int repeticiones = (width() / fondo2.width()) + 1;
             for (int i = 1; i < repeticiones; i++) {
@@ -697,7 +672,6 @@ void Nivel2::dibujarFondoEnCapas(QPainter &painter)
             }
         }
     }
-    // Si no hay fondo2, simplemente no se dibuja nada extra
 }
 
 void Nivel2::dibujarSuelo(QPainter &painter)
@@ -707,7 +681,7 @@ void Nivel2::dibujarSuelo(QPainter &painter)
     if (!suelo.isNull()) {
         // Asegurar que el sprite se cargó correctamente
         if (suelo.width() == 0 || suelo.height() == 0) {
-            qDebug() << "⚠️ Sprite ground2 tiene tamaño 0!";
+            qDebug() << "Sprite ground2 tiene tamaño 0!";
             // Fallback a color sólido
             painter.setBrush(QColor(34, 139, 34));
             painter.setPen(Qt::NoPen);
@@ -717,17 +691,16 @@ void Nivel2::dibujarSuelo(QPainter &painter)
 
         int sueloY = SUELO_Y; // 700
 
-        qDebug() << "🎨 Dibujando suelo con sprite ground2 - Tamaño:"
+        qDebug() << "Dibujando suelo con sprite ground2 - Tamaño:"
                  << suelo.size() << "Posición Y:" << sueloY;
 
-        // Dibujar suelo como en Nivel3 - sprite repetido sin estirar
+        // Dibujar suelo como en Nivel3 - sprite repetido
         int anchoVista = width();
         int repeticiones = (anchoVista / suelo.width()) + 2;
 
         for (int i = -1; i < repeticiones; i++) {
-            // Dibujar cada tile del suelo manteniendo su proporción
             QRectF destino(i * suelo.width(),
-                           sueloY - suelo.height() / 2, // Ajustar para que el sprite se posicione correctamente
+                           sueloY - suelo.height() / 2,
                            suelo.width(),
                            suelo.height());
             painter.drawPixmap(destino, suelo, suelo.rect());
@@ -738,13 +711,12 @@ void Nivel2::dibujarSuelo(QPainter &painter)
         painter.drawLine(0, sueloY, width(), sueloY);
 
     } else {
-        qDebug() << "⚠️ Sprite ground2 NO encontrado, usando fallback";
+        qDebug() << "Sprite ground2 NO encontrado, usando fallback";
         // Fallback: suelo verde sólido
         painter.setBrush(QColor(34, 139, 34));
         painter.setPen(Qt::NoPen);
         painter.drawRect(0, SUELO_Y, width(), height() - SUELO_Y);
 
-        // Añadir textura
         painter.setPen(QPen(QColor(0, 100, 0), 1));
         for (int x = 0; x < width(); x += 20) {
             painter.drawLine(x, SUELO_Y, x, height());
@@ -754,7 +726,6 @@ void Nivel2::dibujarSuelo(QPainter &painter)
 
 void Nivel2::dibujarBarriles(QPainter &painter)
 {
-    // Reemplazar qAsConst con std::as_const
     for (const Barril& barril : std::as_const(barriles)) {
         if (barril.activo) {
             QPointF pos = barril.posicion;
@@ -763,7 +734,6 @@ void Nivel2::dibujarBarriles(QPainter &painter)
             QPixmap barrilSprite = SpriteManager::getInstance().getSprite("obstacle3");
 
             if (!barrilSprite.isNull()) {
-                // Tinte ligero según tipo
                 QPixmap spriteColoreado = barrilSprite;
 
                 if (barril.tipoMovimiento > 1) {
@@ -779,7 +749,6 @@ void Nivel2::dibujarBarriles(QPainter &painter)
                                    displaySize.width(), displaySize.height());
                 painter.drawPixmap(displayRect, spriteColoreado, spriteColoreado.rect());
             } else {
-                // Fallback
                 QColor color = barril.getColor();
 
                 if (barril.tipoMovimiento == 2) {
@@ -811,12 +780,11 @@ void Nivel2::dibujarJugador(QPainter &painter)
     int frameWidth = 192;
     int frameHeight = 192;
 
-    // Usar el frame correcto según el estado
     int currentFrame;
     if (jugador->estaMoviendose()) {
-        currentFrame = frameAnimacionMove % 6;  // SIEMPRE entre 0-5
+        currentFrame = frameAnimacionMove % 6;
     } else {
-        currentFrame = frameAnimacionIdle % 8;  // SIEMPRE entre 0-7
+        currentFrame = frameAnimacionIdle % 8;
     }
 
     dibujarEntidadConSprite(painter, pos, spriteName, displaySize, frameWidth, frameHeight, currentFrame);

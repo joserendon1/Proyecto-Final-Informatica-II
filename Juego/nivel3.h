@@ -55,7 +55,7 @@ private:
     float distanciaRecorrida;
     QElapsedTimer timerNivel;
     QList<QRectF> obstaculos;       // Hitboxes de colisión
-    QList<QRectF> spriteRects;      // Rectángulos de dibujo (más grandes)
+    QList<QRectF> spriteRects;      // Rectángulos de dibujo
     QList<int> tiposObstaculos;
     QList<QRectF> powerUps;
 

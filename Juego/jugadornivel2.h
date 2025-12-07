@@ -1,47 +1,55 @@
 #ifndef JUGADORNIVEL2_H
 #define JUGADORNIVEL2_H
 
+#include "jugadorbase.h"
 #include <QPointF>
 #include <QRectF>
 #include <vector>
+#include <QList>
 
-class JugadorNivel2
+// Forward declaration
+class Arma;
+
+class JugadorNivel2 : public JugadorBase
 {
 public:
     JugadorNivel2();
-    ~JugadorNivel2() = default;
+    ~JugadorNivel2() override = default;
 
-    void actualizar(float deltaTime);
-    void procesarInput(const std::vector<bool>& teclas);
+    // Implementar métodos virtuales puros de JugadorBase
+    void actualizar(float deltaTime) override;
+    void procesarInput(const std::vector<bool>& teclas) override;
+    void activarArmas() override;
 
+    // Implementar métodos de armas
+    const QList<Arma*>& getArmas() const override;
+    bool tieneArma(Arma::Tipo tipo) const override;
+    void anadirArmaNueva(Arma::Tipo tipoArma) override;
+
+    // Métodos específicos de JugadorNivel2
     void moverDerecha();
     void moverIzquierda();
-
     void resetear();
+    QRectF getAreaColision() const override;
 
     // Para animación
     bool estaMoviendose() const { return seEstaMoviendo; }
-    int getDireccion() const { return direccionActual; } // -1: izquierda, 1: derecha, 0: quieto
+    int getDireccion() const { return direccionActual; }
 
-    QPointF getPosicion() const { return posicion; }
-    float getVida() const { return vida; }
+    // Getters adicionales
     void recibirDanio(float danio) { vida -= danio; if (vida < 0) vida = 0; }
 
-    QRectF getAreaColision() const;
-
 private:
-private:
-    float vida = 100.0f;
-    QPointF posicion;
-    std::vector<bool> teclasPresionadas;
-
-    // Para animación
+    // Miembros específicos de JugadorNivel2
     bool seEstaMoviendo = false;
     int direccionActual = 0; // -1: izquierda, 1: derecha, 0: quieto
 
-    float velocidadMovimientoHorizontal = 3.0f;
+    // Límites de movimiento (específicos para Nivel2)
     int limiteIzquierdo = 50;
-    int limiteDerecho = 750;  // Ajustado de 974
+    int limiteDerecho = 750;
+
+    // Lista de armas (requerido por las interfaces)
+    QList<Arma*> armas;
 };
 
 #endif // JUGADORNIVEL2_H
